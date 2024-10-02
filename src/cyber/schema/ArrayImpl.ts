@@ -1,4 +1,5 @@
 import { ArraySchema } from "@colyseus/schema";
+import { cinst, centity } from "./types";
 
 class ArrayImpl<T> {
   //
@@ -85,12 +86,4 @@ export function createArray(values: any[]) {
       return true;
     },
   });
-}
-
-function cinst(val: any) {
-  return val?.$$cInst ?? val;
-}
-
-function centity(val: any) {
-  return val?.$$values ?? val;
 }

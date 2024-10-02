@@ -489,3 +489,11 @@ export class Vec3 extends State {
   y = P.Number(0);
   z = P.Number(0);
 }
+
+export function cinst(val: any) {
+  return val?.$$cInst ?? val;
+}
+
+export function centity(val: any) {
+  return val?.$$values ?? val;
+}

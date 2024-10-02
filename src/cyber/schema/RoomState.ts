@@ -25,7 +25,12 @@ export class RoomState extends State {
 
     const psClass = (this.players as any).$$entityType;
 
-    if (!PlayerState.prototype.isPrototypeOf(psClass.prototype)) {
+    console.log("psClass", psClass);
+
+    if (
+      !PlayerState.prototype.isPrototypeOf(psClass.prototype) &&
+      psClass !== PlayerState
+    ) {
       //
       throw new Error("Invalid PlayerState class");
     }
@@ -44,9 +49,13 @@ export class RoomState extends State {
 
     this.players.set(data.sessionId, player);
     // console.log("added player", player.toJSON());
+
+    return player;
   }
 
   removePlayer(id: string) {
+    const player = this.players.get(id);
+    player.connected = false;
     this.players.delete(id);
   }
 }

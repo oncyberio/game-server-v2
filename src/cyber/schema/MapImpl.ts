@@ -1,4 +1,5 @@
 import { MapSchema } from "@colyseus/schema";
+import { cinst } from "./types";
 
 class MapImpl<T> extends Map<string, T> {
   //
@@ -13,7 +14,7 @@ class MapImpl<T> extends Map<string, T> {
   }
 
   set(key: string, value: T) {
-    this.$$cInst.set(key, (value as any).$$cInst);
+    this.$$cInst.set(key, cinst(value));
     return super.set(key, value);
   }
 
