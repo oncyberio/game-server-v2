@@ -287,8 +287,8 @@ export abstract class GameSession<
       //
       const playerData = this.getPlayerData(params);
       this.validateJoin(playerData);
-      this.state.addPlayer(playerData);
-      await Promise.resolve(this.onJoin(playerData));
+      const player = this.state.addPlayer(playerData);
+      await Promise.resolve(this.onJoin(player));
       // send ping to client to measure latency
       // this._PING_._pingLoop(playerData.sessionId);
       if (this.showLogs) {

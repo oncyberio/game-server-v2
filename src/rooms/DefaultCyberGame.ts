@@ -1,4 +1,5 @@
 import { GameSession } from "../cyber";
+import { PlayerData } from "../cyber/abstract/types";
 import { PlayerState } from "../cyber/schema/PlayerState";
 import { RoomState } from "../cyber/schema/RoomState";
 import { CoinState, GameState } from "./GameState";
@@ -6,6 +7,7 @@ import { loadGame } from "./loadGame";
 import { Signature, Wallet, getBytes, solidityPackedKeccak256 } from "ethers";
 import crypto from "crypto";
 const wallet = new Wallet(process.env.PRIVATE_KEY!);
+import { ServerSpace } from "./ServerSpace";
 
 export class DefaultCyberGame extends GameSession<RoomState> {
   //
@@ -19,39 +21,11 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
   state = new GameState();
 
-  engine = null;
-  space = null;
-  coinModel = null;
-  playerModel = null;
-
-  avatars: Record<string, any> = {};
+  // serverSpace = new ServerSpace();
 
   async onPreload() {
     console.log("Preloading...");
-    this.engine = await loadGame(this.gameId, {
-      filter: (component: any) => {
-        return (
-          component.collider?.enabled || component.script?.identifier === "coin"
-        );
-      },
-    });
-    this.space = this.engine.getCurrentSpace();
-    this.coinModel = this.space.components.byId("coin");
-    this.playerModel = this.space.components.byId("playerModel");
-    console.log("Coin model", this.coinModel.getDimensions());
-    console.log("Player model", this.playerModel.getDimensions());
-    this.spawnCoins(10);
-  }
-
-  spawnCoins(nb: number) {
-    for (let i = 0; i < nb; i++) {
-      const coin = new CoinState();
-      coin.id = Math.random().toString();
-      coin.position.x = Math.random() * 100 - 5;
-      coin.position.y = 0.5;
-      coin.position.z = Math.random() * 100 - 5;
-      this.state.coins.set(coin.id, coin);
-    }
+    // await this.serverSpace.init(this.gameId, this.state);
   }
 
   static onAuth(token: any, request: any): Promise<void> {
@@ -61,35 +35,12 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
   async onJoin(player) {
     console.log(player.sessionId, player.userId, "joined!");
-    if (this.space == null) {
-      console.error("Space not loaded!");
-      return;
-    }
-
-    // const avatar = await this.playerModel.duplicate();
-    // //
-    // if (!this.state.players.has(player.sessionId)) {
-    //   // player left
-    //   console.log(
-    //     "Player left before avatar creattion, disposing...",
-    //     player.sessionId
-    //   );
-    //   avatar.destroy();
-
-    //   return;
-    // }
-
-    // avatar.position.copy(player.position);
-    // avatar.rotation.y = player.rotation.y;
-
-    // console.log("Avatar created", avatar.getDimensions());
+    // this.serverSpace.onJoin(player);
   }
 
   onLeave(player) {
     console.log(player.sessionId, player.userId, "left!");
-    // const avatar = this.avatars[player.sessionId];
-    // delete this.avatars[player.sessionId];
-    // avatar?.destroy();
+    // this.serverSpace.onLeave(player);
   }
 
   onMessage(message: any, player: PlayerState): void {
@@ -109,38 +60,62 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
       coin.owner = player.sessionId;
       this.sendMint(player);
-
-    } else if(message.type == "declare-address") {
+    } else if (message.type == "declare-address") {
       // UNTRUSTED
-      if(!message.address) return;
+      if (!message.address) return;
       player.address = message.address;
     }
   }
 
   async sendMint(player: PlayerState) {
+    if (!player.address) return;
 
-    if(!player.address) return;
-
-    const word = solidityPackedKeccak256(
-      ['string'],
-      [ crypto.randomUUID()]
-    )
+    const word = solidityPackedKeccak256(["string"], [crypto.randomUUID()]);
 
     const hashedMessage = solidityPackedKeccak256(
-      ['address', 'bytes32' ],
-      [ player.address, word ]
+      ["address", "bytes32"],
+      [player.address, word]
     );
 
-    const { v, r, s } = Signature.from(await wallet.signMessage(getBytes(hashedMessage)));
+    const { v, r, s } = Signature.from(
+      await wallet.signMessage(getBytes(hashedMessage))
+    );
 
-    this.send({
-      type: "mint-opportunity",
-      payload: {
-        word,
-        signature: { v,r,s }
-      }
-    }, player.sessionId)
+    this.send(
+      {
+        type: "mint-opportunity",
+        payload: {
+          word,
+          signature: { v, r, s },
+        },
+      },
+      player.sessionId
+    );
   }
+  onPlayerStateMsg(player: PlayerData, extra: any): void {
+    //
+    // const inputs = extra;
+    // if (!inputs) {
+    //   return;
+    // }
+    // this.serverSpace.onPlayerInput(player, inputs);
+  }
+
+  onRpc(request: any, reply: (data: any) => void): void {
+    //
+    console.log("RPC received", request);
+
+    if (request.type === "testRpc") {
+      reply({ message: "Hello from server!" });
+    } else if (request.type === "debugPhysics") {
+      // reply(this.serverSpace.getPhysicsDebug());
+    } else if (request.type === "ccLogs") {
+      // return reply(this.serverSpace.getLogs(request.sessionId));
+    } else {
+      reply({ message: "Invalid request" });
+    }
+  }
+
   // onUpdate(dt: number): void {
   //   console.log("updating...");
   //   this.state.players.forEach((player) => {
