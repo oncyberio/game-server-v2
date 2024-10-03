@@ -71,6 +71,15 @@ export class ColyseusGameRoom extends Room {
     return client;
   }
 
+  sendRaw(msg, sessionId: string) {
+    // console.log("sendRaw", msg, sessionId);
+    if (!msg?.type) {
+      console.error("Invalid message", msg);
+      return;
+    }
+    this.getClient(sessionId)?.send(msg.type, msg.data ?? null);
+  }
+
   sendMsg(msg: any, sessionId: string) {
     this.getClient(sessionId)?.send(CYBER_MSG, msg);
   }
@@ -154,6 +163,7 @@ export class ColyseusGameRoom extends Room {
 
   async onJoin(client: Client, options: any, auth: any) {
     // A websocket just connected!
+    if (options?.userId == "debug") return;
 
     this._logger.info(
       "Connected:",

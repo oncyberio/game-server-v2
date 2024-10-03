@@ -21,6 +21,7 @@ export interface GameRoomCtx {
   gameId: string;
   sendMsg: (msg: any, sessionId: string) => void;
   broadcastMsg: (msg: any, options?: { except?: string[] }) => void;
+  sendRaw: (msg: any, sessionId: string) => void;
   disconnectPlayer: (sessionId: string) => void;
   nbConnected: number;
 }
@@ -58,6 +59,10 @@ export abstract class GameSession<
 
   get status() {
     return this._gameLoop.status;
+  }
+
+  sendRaw(msg: { type: string; data: any }, playerId: string) {
+    this.ctx.sendRaw(msg, playerId);
   }
 
   send(msg: RoomMsg, playerId: string) {
@@ -368,7 +373,19 @@ export abstract class GameSession<
     message: (message: any, sessionId: string) => {
       // compat for broadcast/send messages
       // that were sent as GAME_MESSAGE type
-      if (message.type === Messages.PING) {
+      if (message.type === Messages.RPC) {
+        const reply = (data) => {
+          this.ctx.sendMsg(
+            {
+              type: Messages.RPC,
+              data,
+              msgId: message.msgId,
+            },
+            sessionId
+          );
+        };
+        this.onRpc(message.data, reply);
+      } else if (message.type === Messages.PING) {
         //
         // this._PING_._onPong(message, sessionId);
         //
@@ -398,6 +415,7 @@ export abstract class GameSession<
             scale,
             vrmUrl,
             text,
+            extra,
           ] = msg.data;
 
           const pos = player.position;
@@ -432,6 +450,8 @@ export abstract class GameSession<
           player.vrmUrl = vrmUrl ?? "";
           player.scale = scale ?? 1;
           player.text = text ?? "";
+
+          this.onPlayerStateMsg(player, extra);
         } else if (msg.type == Messages.GAME_MESSAGE) {
           this.onMessage?.(msg.data, player);
 
@@ -451,6 +471,9 @@ export abstract class GameSession<
           if (this.state.players.has(message.playerId)) {
             this.send(message, message.playerId);
           }
+        } else {
+          //
+          console.error("Unknown message type", msg.type);
         }
       }
     },
@@ -519,7 +542,14 @@ export abstract class GameSession<
 
   onLeave(player: PlayerData) {}
 
+  onPlayerStateMsg(player: PlayerData, extra: any) {}
+
   onMessage(msg: ClientMsg, player: PlayerData) {}
+
+  onRpc(request: any, reply: (data: any) => void) {
+    //
+    console.warn("onRpc not implemented", request);
+  }
 
   onRequestStart(data: any) {
     this.startGame(data.countdown ?? 0);

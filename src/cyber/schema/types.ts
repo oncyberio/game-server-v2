@@ -482,12 +482,23 @@ function getDefValue(schema: Param) {
 export class Vec2 extends State {
   x = P.Number(0);
   y = P.Number(0);
+
+  copy(val: XY) {
+    this.x = val.x;
+    this.y = val.y;
+  }
 }
 
 export class Vec3 extends State {
   x = P.Number(0);
   y = P.Number(0);
   z = P.Number(0);
+
+  copy(val: XYZ) {
+    this.x = val.x;
+    this.y = val.y;
+    this.z = val.z;
+  }
 }
 
 export function cinst(val: any) {

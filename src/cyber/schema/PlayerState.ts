@@ -20,4 +20,5 @@ export class PlayerState extends State {
 
   // transient
   connected: boolean = false;
+  address: string = "";
 }

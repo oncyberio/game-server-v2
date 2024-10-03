@@ -51,6 +51,9 @@ export enum Messages {
   // ping
   PING = 1001,
   PONG = 1002,
+
+  // rpc
+  RPC = 9001,
 }
 
 export interface GameActionMessage {
@@ -69,7 +72,17 @@ export interface PingMsg {
   data: number;
 }
 
-export type ServerMessage<RM> = GameActionMessage | RoomMessage<RM> | PingMsg;
+export interface RpcMsg {
+  type: Messages.RPC;
+  data: any;
+  msgId: string;
+}
+
+export type ServerMessage<RM> =
+  | GameActionMessage
+  | RoomMessage<RM>
+  | PingMsg
+  | RpcMsg;
 
 export interface PlayerMessage<M> {
   type: Messages.GAME_MESSAGE;
@@ -94,7 +107,8 @@ export interface PlayerStateMsg {
     animation: string,
     scale: number,
     vrmUrl: string,
-    text: string
+    text: string,
+    extra: any
   ];
 }
 
@@ -121,7 +135,8 @@ export type ClientMessage<M> =
   | PlayerStateMsg
   | BroadcastMsg
   | SendDMMsg
-  | PongMsg;
+  | PongMsg
+  | RpcMsg;
 
 export interface BaseRoomState extends Schema {
   snapshotId: string;
