@@ -1,5 +1,4 @@
 import { GameLoader } from "@oogg/game-server";
-// import * as RAPIER from "@dimforge/rapier3d-compat";
 
 const builtinExcludes = {
   fog: true,
