@@ -1,12 +1,8 @@
 import { GameSession } from "../cyber";
-import { PlayerData } from "../cyber/abstract/types";
+import { PlayerData, PlayerStatePayload } from "../cyber/abstract/types";
 import { PlayerState } from "../cyber/schema/PlayerState";
 import { RoomState } from "../cyber/schema/RoomState";
-import { CoinState, GameState } from "./GameState";
-import { loadGame } from "./loadGame";
-import { Signature, Wallet, getBytes, solidityPackedKeccak256 } from "ethers";
-import crypto from "crypto";
-const wallet = new Wallet(process.env.PRIVATE_KEY!);
+import { GameState } from "./GameState";
 import { ServerSpace } from "./ServerSpace";
 
 export class DefaultCyberGame extends GameSession<RoomState> {
@@ -21,11 +17,13 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
   state = new GameState();
 
-  // serverSpace = new ServerSpace();
+  serverSpace = new ServerSpace();
+
+  iv: any;
 
   async onPreload() {
     console.log("Preloading...");
-    // await this.serverSpace.init(this.gameId, this.state);
+    await this.serverSpace.init(this.gameId, this.state);
   }
 
   static onAuth(token: any, request: any): Promise<void> {
@@ -35,70 +33,67 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
   async onJoin(player) {
     console.log(player.sessionId, player.userId, "joined!");
-    // this.serverSpace.onJoin(player);
+    this.serverSpace.onJoin(player);
   }
 
   onLeave(player) {
     console.log(player.sessionId, player.userId, "left!");
-    // this.serverSpace.onLeave(player);
+    this.serverSpace.onLeave(player);
   }
 
   onMessage(message: any, player: PlayerState): void {
+    if (message.type === "input") {
+      // console.log("Input received from", player.sessionId, message.input);
+      this.serverSpace.onPlayerInput(player, message.input);
+    }
     //
     // console.log("Message received from", player.sessionId, message);
-
-    if (message.type === "collect") {
-      //
-      const coin = this.state.coins.get(message.coinId);
-
-      if (coin.owner) {
-        //
-        console.error("Coin already collected by", coin.owner);
-
-        return;
-      }
-
-      coin.owner = player.sessionId;
-      this.sendMint(player);
-    } else if (message.type == "declare-address") {
-      // UNTRUSTED
-      if (!message.address) return;
-      player.address = message.address;
-    }
-  }
-
-  async sendMint(player: PlayerState) {
-    if (!player.address) return;
-
-    const word = solidityPackedKeccak256(["string"], [crypto.randomUUID()]);
-
-    const hashedMessage = solidityPackedKeccak256(
-      ["address", "bytes32"],
-      [player.address, word]
-    );
-
-    const { v, r, s } = Signature.from(
-      await wallet.signMessage(getBytes(hashedMessage))
-    );
-
-    this.send(
-      {
-        type: "mint-opportunity",
-        payload: {
-          word,
-          signature: { v, r, s },
-        },
-      },
-      player.sessionId
-    );
-  }
-  onPlayerStateMsg(player: PlayerData, extra: any): void {
-    //
-    // const inputs = extra;
-    // if (!inputs) {
-    //   return;
+    // if (message.type === "collect") {
+    //   //
+    //   const coin = this.state.coins.get(message.coinId);
+    //   if (coin.owner) {
+    //     //
+    //     console.error("Coin already collected by", coin.owner);
+    //     return;
+    //   }
+    //   coin.owner = player.sessionId;
+    //   // this.sendMint(player);
+    // } else if (message.type == "declare-address") {
+    //   // UNTRUSTED
+    //   if (!message.address) return;
+    //   player.address = message.address;
     // }
-    // this.serverSpace.onPlayerInput(player, inputs);
+  }
+
+  // async sendMint(player: PlayerState) {
+  //   if (!player.address) return;
+
+  //   const word = solidityPackedKeccak256(["string"], [crypto.randomUUID()]);
+
+  //   const hashedMessage = solidityPackedKeccak256(
+  //     ["address", "bytes32"],
+  //     [player.address, word]
+  //   );
+
+  //   const { v, r, s } = Signature.from(
+  //     await wallet.signMessage(getBytes(hashedMessage))
+  //   );
+
+  //   this.send(
+  //     {
+  //       type: "mint-opportunity",
+  //       payload: {
+  //         word,
+  //         signature: { v, r, s },
+  //       },
+  //     },
+  //     player.sessionId
+  //   );
+  // }
+
+  onPlayerStateMsg(payload: PlayerStatePayload, player: PlayerState) {
+    //
+    this.serverSpace.onPlayerPayload(player, payload);
   }
 
   onRpc(request: any, reply: (data: any) => void): void {
@@ -108,9 +103,9 @@ export class DefaultCyberGame extends GameSession<RoomState> {
     if (request.type === "testRpc") {
       reply({ message: "Hello from server!" });
     } else if (request.type === "debugPhysics") {
-      // reply(this.serverSpace.getPhysicsDebug());
+      reply(this.serverSpace.getPhysicsDebug());
     } else if (request.type === "ccLogs") {
-      // return reply(this.serverSpace.getLogs(request.sessionId));
+      return reply(this.serverSpace.getLogs(request.sessionId));
     } else {
       reply({ message: "Invalid request" });
     }
@@ -126,5 +121,7 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
   onDispose() {
     console.log("disposing...");
+    this.serverSpace.dispose();
+    console.log("disposed");
   }
 }

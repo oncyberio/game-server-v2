@@ -151,3 +151,14 @@ export interface BaseRoomState extends Schema {
   addPlayer(player: PlayerData): void;
   removePlayer(sessionId: string): void;
 }
+
+export interface PlayerStatePayload {
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  animation: string;
+  scale: number;
+  vrmUrl: string;
+  text: string;
+  input: any;
+  extra?: any;
+}

@@ -8,9 +8,11 @@ import {
   ClientMessage,
   PlayerData,
   PongMsg,
+  PlayerStatePayload,
 } from "./types";
 import { RoomState } from "../schema/RoomState";
 import { calcLatencyIPDTV } from "./utils";
+import { PlayerState } from "../schema/PlayerState";
 
 const defaults = {
   PATCH_RATE: 20, // fps
@@ -403,7 +405,6 @@ export abstract class GameSession<
         // this.logInfo("message", message, msg.type, msg.type == ClientProtocol.GAME_REQUEST)
         if (msg.type == Messages.PLAYER_STATE) {
           // player state message
-
           const [
             posX,
             posY,
@@ -415,43 +416,22 @@ export abstract class GameSession<
             scale,
             vrmUrl,
             text,
-            extra,
+            input,
           ] = msg.data;
 
-          const pos = player.position;
+          const payload: PlayerStatePayload = {
+            position: { x: posX, y: posY, z: posZ },
+            rotation: { x: rotX, y: rotY, z: rotZ },
+            animation,
+            scale,
+            vrmUrl,
+            text,
+            input,
+            extra: null, // for now
+          };
 
-          let same = true;
-
-          this.state.players.forEach((p) => {
-            //
-            if (p.sessionId === player.sessionId) {
-              return;
-            }
-            if (p.position !== pos) {
-              same = false;
-            } else {
-              console.log("same position");
-            }
-          });
-
-          player.position.assign({
-            x: posX ?? 0,
-            y: posY ?? 0,
-            z: posZ ?? 0,
-          });
-
-          player.rotation.assign({
-            x: rotX ?? 0,
-            y: rotY ?? 0,
-            z: rotZ ?? 0,
-          });
-
-          player.animation = animation ?? "idle";
-          player.vrmUrl = vrmUrl ?? "";
-          player.scale = scale ?? 1;
-          player.text = text ?? "";
-
-          this.onPlayerStateMsg(player, extra);
+          this.onPlayerStateMsg(payload, player);
+          //
         } else if (msg.type == Messages.GAME_MESSAGE) {
           this.onMessage?.(msg.data, player);
 
@@ -542,7 +522,10 @@ export abstract class GameSession<
 
   onLeave(player: PlayerData) {}
 
-  onPlayerStateMsg(player: PlayerData, extra: any) {}
+  onPlayerStateMsg(payload: PlayerStatePayload, player: PlayerState) {
+    //
+    player.update(payload);
+  }
 
   onMessage(msg: ClientMsg, player: PlayerData) {}
 

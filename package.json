@@ -35,12 +35,12 @@
     "@colyseus/monitor": "^0.15.0",
     "@colyseus/playground": "^0.15.3",
     "@colyseus/tools": "^0.15.41",
+    "@oogg/game-server": "^1.0.0-alpha-1",
     "async-mutex": "^0.5.0",
     "colyseus": "^0.15.0",
     "cors": "^2.8.5",
     "ethers": "^6.13.3",
     "express": "^4.18.2",
-    "express-basic-auth": "^1.2.1",
-    "game-server-colyseus": "file:../oo.gg/packages/game-server"
+    "express-basic-auth": "^1.2.1"
   }
 }

@@ -11,6 +11,7 @@ export class CoinState extends State {
 export class MPlayerState extends PlayerState {
   serverPos = P.XYZ();
   serverRot = P.XYZ();
+  lastInputSeq = P.Number(0);
 }
 
 export class GameState extends RoomState {

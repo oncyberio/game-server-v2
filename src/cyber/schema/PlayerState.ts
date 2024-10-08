@@ -1,4 +1,4 @@
-import { PlayerRole } from "../abstract/types";
+import { PlayerRole, PlayerStatePayload } from "../abstract/types";
 import { State, P } from "./types";
 
 export class PlayerState extends State {
@@ -21,4 +21,14 @@ export class PlayerState extends State {
   // transient
   connected: boolean = false;
   address: string = "";
+
+  update(payload: PlayerStatePayload) {
+    //
+    this.position.copy(payload.position);
+    this.rotation.copy(payload.rotation);
+    this.animation = payload.animation;
+    this.scale = payload.scale;
+    this.vrmUrl = payload.vrmUrl;
+    this.text = payload.text;
+  }
 }
