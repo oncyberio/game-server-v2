@@ -1,15 +1,20 @@
-import { PlayerState } from "../cyber";
+import type { GameSession, PlayerState } from "../cyber";
 import { PlayerStatePayload } from "../cyber/abstract/types";
 import { CoinState, GameState } from "./GameState";
 import { loadGame } from "./loadGame";
 
+const USE_SERVER_REGEX = /^\s*"use server"/;
 export class ServerSpace {
+  //
+  session: GameSession = null;
   engine = null;
+  playerManager = null;
   space = null;
-  avatar = null;
+  // avatar = null;
   coins = null;
   coinModel = null;
   state: GameState = null;
+
   avatars: Record<string, any> = {};
   controls: Record<string, any> = {};
 
@@ -17,32 +22,78 @@ export class ServerSpace {
   iv = null;
   time = 0;
 
-  async init(gameId, state) {
+  private getServerScripts(gameData: any) {
+    const serverScripts = {};
+
+    Object.values(gameData.components).forEach((c: any) => {
+      //
+      if (c.type.startsWith("script")) {
+        serverScripts[c.id] = USE_SERVER_REGEX.test(c.emit?.code);
+      }
+    });
+    return serverScripts;
+  }
+
+  private canLoadComponent(
+    component: any,
+    serverScripts: Record<string, boolean>
+  ) {
     //
-    this.state = state;
+    if (component.type === "prefab") {
+      return true;
+    }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (component.type == "script") {
+      return serverScripts[component.id];
+    }
 
-    this.engine = await loadGame(gameId, {
+    if (component.type.startsWith("script")) {
+      return serverScripts[component.type];
+    }
+
+    return (
+      component.type === "group" ||
+      component.collider?.enabled ||
+      component.type === "spawn"
+    );
+  }
+
+  private getServerApi() {
+    return {
+      addRpcHandler: (id: string, handler: (data: any) => any) => {
+        return this.session.onRpc(id, handler);
+      },
+    };
+  }
+
+  async init(opts: { session: GameSession }) {
+    //
+    this.session = opts.session;
+
+    this.state = opts.session.state as GameState;
+
+    const gameData = this.session.gameData;
+
+    const serverScripts = this.getServerScripts(gameData);
+
+    const res = await loadGame(gameData, {
       debugPhysics: true,
+      serverApi: this.getServerApi(),
       filter: (component: any) => {
         // console.log("Component", component.id, component.name);
-        return (
-          component.collider?.enabled ||
-          component.script?.identifier === "coin" ||
-          component.name == "PlayerControls" ||
-          component.name == "Controls"
-        );
+        return this.canLoadComponent(component, serverScripts);
       },
     });
 
-    this.engine.notify(this.engine.Events.GAME_READY);
+    this.engine = res.engine;
+
+    this.playerManager = res.players;
 
     this.space = this.engine.getCurrentSpace();
 
     this.coinModel = this.space.components.byId("coin");
 
-    const playerModel = this.space.components.byId("playerModel");
+    // const playerModel = this.space.components.byId("playerModel");
 
     /*
     console.log("Coin model", this.coinModel.getDimensions());
@@ -53,12 +104,13 @@ export class ServerSpace {
     );
     */
     const coins = await this.spawnCoins(10);
+
     this.space = this.engine.getCurrentSpace();
-    this.avatar = playerModel;
+    // this.avatar = playerModel;
+
     this.coins = coins;
     this.space.physics.active = true;
     this.space.physics.update(1 / 60);
-
     this.time = Date.now() / 1000;
     this.iv = setInterval(() => {
       const now = Date.now() / 1000;
@@ -66,6 +118,59 @@ export class ServerSpace {
       this.time = now;
       this.update(dt);
     }, 1000 / 60);
+
+    this.session.onRpc("debugPhysics", (_, reply) => {
+      reply(this.getPhysicsDebug());
+    });
+
+    this.session.onRpc("ccLogs", (request, reply) => {
+      return reply(this.getLogs(request.sessionId));
+    });
+
+    this.session.onRpc("@@engine", async (request, reply) => {
+      //
+      try {
+        const { id, method, args } = request;
+
+        const instance = this._getRpcRecipient(id);
+
+        if (instance == null) {
+          throw new Error("Instance not found");
+        }
+
+        if (typeof instance.$$dispatchRpc !== "function") {
+          throw new Error("Rpc method not found");
+        }
+        const data = await instance.$$dispatchRpc(method, args);
+
+        console.log("Rpc", method, args, data);
+
+        reply({ value: data });
+        //
+      } catch (err) {
+        //
+        console.error("Error", err);
+
+        reply({ error: err.message });
+      }
+    });
+  }
+
+  private _getRpcRecipient(rpcId: string) {
+    //
+    return this.space.components.find((c) => {
+      return c._rpcId === rpcId;
+    });
+  }
+
+  startGame() {
+    //
+    this.space.start();
+  }
+
+  stopGame() {
+    //
+    this.space.stop();
   }
 
   spawnCoins(nb: number) {
@@ -105,32 +210,21 @@ export class ServerSpace {
     }
 
     player.position.copy(this._startPos);
+
     player.rotation.copy(this._startRot);
 
-    // player.position.x += Math.random() * 10;
-
-    const data = {
-      position: {
-        x: player.position.x,
-        y: player.position.y,
-        z: player.position.z,
-      },
-      rotation: {
-        x: player.rotation.x,
-        y: player.rotation.y,
-        z: player.rotation.z,
-      },
-    };
-
-    const avatar = await this.avatar.duplicate({
-      overrideOpts: data,
+    const p = this.playerManager.addPlayer(player, {
+      collision: true,
     });
 
-    // avatar.collider.raw.setSensor(true);
+    await p.avatarReady;
+
+    const avatar = p.avatar;
 
     console.log(
-      "Avatar created",
-      avatar.behaviors.map((b) => b.name)
+      "Remote Avatar created",
+      // avatar.behaviors.map((b) => b.name),
+      avatar.getDimensions()
     );
 
     if (player.connected === false) {
@@ -138,23 +232,18 @@ export class ServerSpace {
         "Player left before avatar creattion, disposing...",
         player.sessionId
       );
-      avatar.destroy();
-      return;
+
+      this.playerManager.removePlayer(player.sessionId);
     }
 
-    console.log(
-      "behs",
-      avatar.behaviors.map((b) => b.tag)
-    );
     const control = avatar.behaviors[0];
-
     this.controls[player.sessionId] = control;
 
     console.log(
       "controls added",
       player.sessionId,
-      control._dirTarget.type,
-      avatar.rigidBody.position
+      avatar._rpcId,
+      control._rpcId
     );
 
     this.avatars[player.sessionId] = avatar;
@@ -203,10 +292,6 @@ export class ServerSpace {
 
     while (this._accumulatedTime >= this.dt) {
       //
-      this.setInputs();
-
-      // this.space.physics.world.timestep = this.dt;
-      // this.space.physics.world.step();
       this.engine.notify(this.engine.Events.FIXED_UPDATE, this.dt, now);
 
       this.space.physics.updateFixed(this.dt);
@@ -215,11 +300,11 @@ export class ServerSpace {
 
       now += this.dt;
     }
-    // this.space.physics.update(dt, Date.now() / 1000);
   }
 
   _frame = 0;
 
+  /*
   setInputs() {
     //
     for (let sessionId in this.controls) {
@@ -257,9 +342,17 @@ export class ServerSpace {
       // }
     }
 
+    this.updateServerPositions();
+  }
+  */
+
+  /*
+  updateServerPositions() {
+    //
     for (let sessionId in this.avatars) {
       const avatar = this.avatars[sessionId];
       const player = this.state.players.get(sessionId);
+      const controls = this.controls[sessionId];
 
       if (avatar == null || player == null) {
         console.error("Avatar not found", sessionId);
@@ -268,35 +361,33 @@ export class ServerSpace {
 
       player.serverPos.copy(avatar.position);
       player.serverRot.copy(avatar.rotation);
+      player.lastInputSeq = controls._seqId;
     }
   }
+    */
 
-  limit = 0;
-
+  /*
   onPlayerInput(player: PlayerState, input) {
     //
-    if (this.limit < 10) {
-      // console.log("Input received", player.sessionId, input);
-      this.limit++;
-    }
-    if (this._inputs[player.sessionId] == null) {
-      this._inputs[player.sessionId] = [];
+    const controls = this.controls[player.sessionId];
+
+    if (controls == null) {
+      console.error("Controls not found", player.sessionId);
+      return;
     }
 
-    this._inputs[player.sessionId].push(input);
+    controls.server_onInput(input);
   }
+  */
 
   // playerInputs: Record<string, any[]> = {};
 
   onPlayerPayload(player: PlayerState, payload: PlayerStatePayload) {
     //
     player.update(payload);
-
-    if (payload.input) {
-      // this.processInputs(player, payload.input);
-    }
   }
 
+  /*
   processInputs(player, inputs: any[]) {
     // console.log("validatePosition", player.sessionId, inputs);
     const playerControl = this.controls[player.sessionId];
@@ -349,6 +440,7 @@ export class ServerSpace {
     //   avatar.rigidBody.quaternion.copy(avatar.quaternion);
     // }
   }
+    */
 
   getLogs(sessionId) {
     //

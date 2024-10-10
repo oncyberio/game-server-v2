@@ -23,7 +23,9 @@ export class DefaultCyberGame extends GameSession<RoomState> {
 
   async onPreload() {
     console.log("Preloading...");
-    await this.serverSpace.init(this.gameId, this.state);
+    await this.serverSpace.init({
+      session: this,
+    });
   }
 
   static onAuth(token: any, request: any): Promise<void> {
@@ -42,10 +44,10 @@ export class DefaultCyberGame extends GameSession<RoomState> {
   }
 
   onMessage(message: any, player: PlayerState): void {
-    if (message.type === "input") {
-      // console.log("Input received from", player.sessionId, message.input);
-      this.serverSpace.onPlayerInput(player, message.input);
-    }
+    // if (message.type === "input") {
+    //   // console.log("Input received from", player.sessionId, message.input);
+    //   this.serverSpace.onPlayerInput(player, message.input);
+    // }
     //
     // console.log("Message received from", player.sessionId, message);
     // if (message.type === "collect") {
@@ -96,19 +98,18 @@ export class DefaultCyberGame extends GameSession<RoomState> {
     this.serverSpace.onPlayerPayload(player, payload);
   }
 
-  onRpc(request: any, reply: (data: any) => void): void {
+  async startGame(countdown: number) {
     //
-    console.log("RPC received", request);
+    await super.startGame(countdown);
 
-    if (request.type === "testRpc") {
-      reply({ message: "Hello from server!" });
-    } else if (request.type === "debugPhysics") {
-      reply(this.serverSpace.getPhysicsDebug());
-    } else if (request.type === "ccLogs") {
-      return reply(this.serverSpace.getLogs(request.sessionId));
-    } else {
-      reply({ message: "Invalid request" });
-    }
+    this.serverSpace.startGame();
+  }
+
+  stopGame() {
+    //
+    super.stopGame();
+
+    this.serverSpace.stopGame();
   }
 
   // onUpdate(dt: number): void {

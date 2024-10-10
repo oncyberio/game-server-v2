@@ -12,8 +12,12 @@ const builtinExcludes = {
 };
 //
 
+interface ServerApi {
+  addRpcHandler: (id: string, handler: (data: any) => any) => void;
+}
 export interface LoadGameOptions {
   isDraft: boolean;
+  serverApi: ServerApi;
   debugPhysics: boolean;
   filter: (component: any) => boolean;
 }
@@ -21,22 +25,27 @@ export interface LoadGameOptions {
 const defOptions = {
   isDraft: true,
   debugPhysics: false,
+  serverApi: null,
   filter: (component: any) => {
     return component.collider?.enabled;
   },
 };
 
-export async function loadGame(gameId, opts: Partial<LoadGameOptions> = {}) {
+export async function loadGame(gameData, opts: Partial<LoadGameOptions> = {}) {
   //
-  console.log("Loading game space");
+  console.log(
+    "Loading game space",
+    gameData.id,
+    Object.keys(gameData.components)
+  );
 
   opts = Object.assign({}, defOptions, opts);
 
   const loader = new GameLoader();
 
-  const engine = await loader.loadGame(gameId, opts);
+  const result = await loader.loadGameData(gameData, opts);
 
   console.log("Game space created");
 
-  return engine;
+  return result;
 }

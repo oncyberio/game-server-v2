@@ -1,4 +1,5 @@
-const GAME_API_URL = "https://oo-git-dev-oncyber.vercel.app/api/games";
+const BASE_URL = "https://oo-git-colyseus-server-oncyber.vercel.app";
+const GAME_API_URL = `${BASE_URL}/api/games`;
 
 export class GameApi {
   //
@@ -14,7 +15,7 @@ export class GameApi {
 
     const result = await reponse.json();
 
-    return result.data;
+    return result;
   }
 
   static async auth(token: string) {

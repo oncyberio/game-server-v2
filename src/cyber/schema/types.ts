@@ -340,6 +340,10 @@ export class State {
 
     return target;
   }
+
+  toJSON() {
+    return this.$$cInst.toJSON();
+  }
 }
 
 function createSchema(info: EntityInfo) {

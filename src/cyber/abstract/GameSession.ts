@@ -9,6 +9,7 @@ import {
   PlayerData,
   PongMsg,
   PlayerStatePayload,
+  RpcHandler,
 } from "./types";
 import { RoomState } from "../schema/RoomState";
 import { calcLatencyIPDTV } from "./utils";
@@ -21,6 +22,7 @@ const defaults = {
 
 export interface GameRoomCtx {
   gameId: string;
+  gameData: any;
   sendMsg: (msg: any, sessionId: string) => void;
   broadcastMsg: (msg: any, options?: { except?: string[] }) => void;
   sendRaw: (msg: any, sessionId: string) => void;
@@ -57,6 +59,10 @@ export abstract class GameSession<
 
   get gameId() {
     return this.ctx.gameId;
+  }
+
+  get gameData() {
+    return this.ctx.gameData;
   }
 
   get status() {
@@ -372,28 +378,39 @@ export abstract class GameSession<
       // this._CALLBACKS_.prevTimestamp = this.state.timestamp;
     },
 
-    message: (message: any, sessionId: string) => {
+    message: (message: ClientMessage<any>, sessionId: string) => {
       // compat for broadcast/send messages
       // that were sent as GAME_MESSAGE type
       if (message.type === Messages.RPC) {
-        const reply = (data) => {
-          this.ctx.sendMsg(
-            {
-              type: Messages.RPC,
-              data,
-              msgId: message.msgId,
-            },
-            sessionId
-          );
-        };
-        this.onRpc(message.data, reply);
+        let handlers = this._rpcRecipients[message.rpcId];
+
+        if (handlers != null) {
+          //
+          const reply = message.msgId
+            ? (data) => {
+                this.ctx.sendMsg(
+                  {
+                    type: Messages.RPC,
+                    rpcId: message.rpcId,
+                    data,
+                    msgId: message.msgId,
+                  },
+                  sessionId
+                );
+              }
+            : () => {};
+
+          handlers.forEach((handler) => {
+            handler(message.data, reply);
+          });
+        }
       } else if (message.type === Messages.PING) {
         //
         // this._PING_._onPong(message, sessionId);
         //
       } else {
         //
-        const msg = message as ClientMessage<ClientMsg>;
+        const msg = message;
 
         const player = this.state.players.get(sessionId);
 
@@ -445,15 +462,15 @@ export abstract class GameSession<
           }
         } else if (msg.type == Messages.BROADCAST) {
           //
-          this.broadcast(msg.data, msg.exclude);
+          // this.broadcast(msg.data, msg.exclude);
         } else if (msg.type == Messages.SEND_DM) {
           //
-          if (this.state.players.has(message.playerId)) {
-            this.send(message, message.playerId);
+          if (this.state.players.has(msg.playerId)) {
+            // this.send(msg, msg.playerId);
           }
         } else {
           //
-          console.error("Unknown message type", msg.type);
+          console.error("Unknown message type", (msg as any).type);
         }
       }
     },
@@ -529,9 +546,18 @@ export abstract class GameSession<
 
   onMessage(msg: ClientMsg, player: PlayerData) {}
 
-  onRpc(request: any, reply: (data: any) => void) {
-    //
-    console.warn("onRpc not implemented", request);
+  private _rpcRecipients: Record<string, Set<RpcHandler>> = {};
+
+  onRpc(rpcId: string, handler: RpcHandler) {
+    if (this._rpcRecipients[rpcId] == null) {
+      this._rpcRecipients[rpcId] = new Set();
+    }
+
+    this._rpcRecipients[rpcId].add(handler);
+
+    return () => {
+      this._rpcRecipients[rpcId].delete(handler);
+    };
   }
 
   onRequestStart(data: any) {
@@ -540,7 +566,9 @@ export abstract class GameSession<
 
   onUpdate(dt: number) {}
 
-  onDispose() {}
+  onDispose() {
+    //
+  }
 }
 
 function isArrayOfStrings(exclude) {

@@ -18,6 +18,8 @@ export class ColyseusGameRoom extends Room {
 
   private _gameId: string;
 
+  private _gameData: any;
+
   private _logger = logger;
 
   // tickRate = this._room.tickRate ?? defaults.TICK_RATE;
@@ -57,6 +59,10 @@ export class ColyseusGameRoom extends Room {
 
   get gameId() {
     return this._gameId;
+  }
+
+  get gameData() {
+    return this._gameData;
   }
 
   get nbConnected() {
@@ -108,6 +114,11 @@ export class ColyseusGameRoom extends Room {
         throw new Error("Invalid request");
       }
 
+      this._gameId =
+        opts.gameId ?? "anon-" + Math.random().toString(36).substr(2, 9);
+
+      this._gameData = opts.gameData;
+
       let roomHandlerClass = ScriptFactory.instance.init(opts.gameData);
 
       let roomHandler;
@@ -125,9 +136,6 @@ export class ColyseusGameRoom extends Room {
       }
 
       this._setRoomHandler(roomHandler);
-
-      this._gameId =
-        opts.gameId ?? "anon-" + Math.random().toString(36).substr(2, 9);
 
       this._logger.info("Creating Room for game", this._gameId);
 

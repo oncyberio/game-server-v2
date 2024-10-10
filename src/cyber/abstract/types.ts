@@ -74,6 +74,7 @@ export interface PingMsg {
 
 export interface RpcMsg {
   type: Messages.RPC;
+  rpcId: string;
   data: any;
   msgId: string;
 }
@@ -82,7 +83,8 @@ export type ServerMessage<RM> =
   | GameActionMessage
   | RoomMessage<RM>
   | PingMsg
-  | RpcMsg;
+  | RpcMsg
+  | SendDMMsg;
 
 export interface PlayerMessage<M> {
   type: Messages.GAME_MESSAGE;
@@ -162,3 +164,7 @@ export interface PlayerStatePayload {
   input: any;
   extra?: any;
 }
+
+export type RpcReply = (data: any) => void;
+
+export type RpcHandler = (data: any, reply: RpcReply) => void;
