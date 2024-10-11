@@ -1,5 +1,5 @@
 import type { IncomingMessage } from "http";
-import { Room, Client, logger } from "@colyseus/core";
+import { Room, Client, logger, SchemaSerializer } from "@colyseus/core";
 import { CYBER_MSG } from "../cyber/abstract/types";
 import { DefaultCyberGame } from "./DefaultCyberGame";
 import { GameApi } from "../cyber/abstract/GameApi";
@@ -42,14 +42,12 @@ export class ColyseusGameRoom extends Room {
 
     this.setPatchRate(1000 / patchRate); // colyseus uses ms
 
-    const state = this._roomHandler.state;
+    // const state = this._roomHandler.state;
 
-    if (!state?.$$cInst) {
-      //
-      throw new Error("Invalid state");
-    }
-
-    this.setState(state.$$cInst);
+    // if (!state?.$$cInst) {
+    //   //
+    //   throw new Error("Invalid state");
+    // }
 
     this.maxClients = Math.min(
       this._roomHandler.maxPlayers ?? defaults.MAX_PLAYERS,
@@ -135,16 +133,16 @@ export class ColyseusGameRoom extends Room {
         roomHandler = new roomHandlerClass(this);
       }
 
-      this._setRoomHandler(roomHandler);
-
       this._logger.info("Creating Room for game", this._gameId);
+
+      await roomHandler._CALLBACKS_.start();
+
+      this._setRoomHandler(roomHandler);
 
       this.setMetadata({
         gameId: this._gameId,
         name: opts.gameName ?? "-",
       });
-
-      await this._roomHandler._CALLBACKS_.start();
       //
     } catch (err) {
       this._logger.error(err);
@@ -185,6 +183,41 @@ export class ColyseusGameRoom extends Room {
       id: client.sessionId,
     });
   }
+
+  /*
+  _serializerPatched = false;
+
+  _patchSerializer() {
+    //
+    const fakeClient = {
+      id: "fake",
+      state: 1,
+      raw: (bytes) => {
+        //
+        //console.log("raw", bytes, this._roomHandler?._CALLBACKS_);
+        this._roomHandler?._CALLBACKS_.afterPatch(bytes.slice(1));
+      },
+    };
+
+    const serializer = (this as any)._serializer as SchemaSerializer<any>;
+    //
+    serializer.applyPatches = function (clients: Client[]) {
+      //
+      return SchemaSerializer.prototype.applyPatches.call(
+        this,
+        clients.concat(fakeClient as any)
+      );
+    };
+
+    this._serializerPatched = true;
+  }
+
+  _unpatchSerializer() {
+    const serializer = (this as any)._serializer as SchemaSerializer<any>;
+    delete serializer["applyPatches"];
+    this._serializerPatched = false;
+  }
+    */
 
   async onLeave(client: Client, consented: boolean) {
     //

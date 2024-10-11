@@ -14,6 +14,8 @@ import {
 import { RoomState } from "../schema/RoomState";
 import { calcLatencyIPDTV } from "./utils";
 import { PlayerState } from "../schema/PlayerState";
+import { Server } from "colyseus";
+import { ServerSpace } from "../ServerSpace";
 
 const defaults = {
   PATCH_RATE: 20, // fps
@@ -28,6 +30,7 @@ export interface GameRoomCtx {
   sendRaw: (msg: any, sessionId: string) => void;
   disconnectPlayer: (sessionId: string) => void;
   nbConnected: number;
+  setState: (state: any) => void;
 }
 
 export abstract class GameSession<
@@ -37,7 +40,9 @@ export abstract class GameSession<
 > {
   private _gameLoop = new GameLoop();
 
-  readonly state: State;
+  Schema: any = class extends RoomState {};
+
+  state: State;
 
   readonly tickRate = defaults.TICK_RATE;
 
@@ -55,7 +60,15 @@ export abstract class GameSession<
 
   showLogs = false;
 
-  constructor(private ctx: GameRoomCtx) {}
+  serverEngine = {
+    enabled: false,
+  };
+
+  serverSpace: ServerSpace = null;
+
+  constructor(private ctx: GameRoomCtx) {
+    //
+  }
 
   get gameId() {
     return this.ctx.gameId;
@@ -127,6 +140,7 @@ export abstract class GameSession<
         //
         this._gameLoop.start();
         this.state.timer.reset();
+        this.serverSpace?.startGame();
         resolve();
       }, countdownMillis);
     });
@@ -134,7 +148,7 @@ export abstract class GameSession<
 
   stopGame() {
     this._gameLoop.stop();
-
+    this.serverSpace?.stopGame();
     this.ctx.broadcastMsg({
       type: Messages.ROOM_GAME_ACTION,
       action: GameActions.STOP,
@@ -277,14 +291,27 @@ export abstract class GameSession<
   _CALLBACKS_ = {
     start: async () => {
       //
+      if (this.serverEngine.enabled) {
+        console.log("Server engine enabled");
+        this.serverSpace = new ServerSpace();
+      }
+
+      // We must run the server space, so that the space scripts
+      // can attach their schemas to the room state
+      await this.serverSpace?.init({
+        session: this,
+      });
+
+      await this.onPreload();
+      this.state ??= new this.Schema();
+      (this as any).ctx.setState(this.state);
+
       const tickRate = this.tickRate ?? defaults.TICK_RATE;
       const patchRate = this.patchRate ?? defaults.PATCH_RATE;
       this._gameLoop.tickRate = tickRate;
       this.state.settings.reconnectTimeout = this.reconnectTimeout;
       this.state.settings.tickRate = tickRate;
       this.state.settings.patchRate = patchRate;
-
-      await this.onPreload();
 
       if (typeof this.constructor.prototype.onUpdate === "function") {
         this._gameLoop.onTick = this._CALLBACKS_.tick;
@@ -297,6 +324,7 @@ export abstract class GameSession<
       this.validateJoin(playerData);
       const player = this.state.addPlayer(playerData);
       await Promise.resolve(this.onJoin(player));
+      this.serverSpace?.onJoin(player);
       // send ping to client to measure latency
       // this._PING_._pingLoop(playerData.sessionId);
       if (this.showLogs) {
@@ -349,6 +377,8 @@ export abstract class GameSession<
       }
 
       this.onLeave(player);
+
+      this.serverSpace.onLeave(player);
     },
 
     tick: (dt: number) => {
@@ -369,13 +399,26 @@ export abstract class GameSession<
 
     beforePatch: () => {
       //
+      this.serverSpace?.onBeforePatch();
+
+      // if (this.state["$changes"].changes.size > 0) {
+      //   console.log("beforePatch", this.state["$changes"].changes.size);
+      // }
+
       this.state.snapshotId = Math.random().toString(36).substring(2, 7);
       this.state.timestamp = Date.now();
+
+      // this.onBeforePatch();
       // console.log(
       //   "beforePatch",
       //   this.state.timestamp - this._CALLBACKS_.prevTimestamp
       // );
       // this._CALLBACKS_.prevTimestamp = this.state.timestamp;
+    },
+
+    afterPatch: (bytes) => {
+      //
+      this.serverSpace._onAfterPatch(bytes);
     },
 
     message: (message: ClientMessage<any>, sessionId: string) => {
@@ -388,6 +431,7 @@ export abstract class GameSession<
           //
           const reply = message.msgId
             ? (data) => {
+                // console.log("replying", message, data);
                 this.ctx.sendMsg(
                   {
                     type: Messages.RPC,
@@ -478,7 +522,7 @@ export abstract class GameSession<
     shutdown: () => {
       //
       this._gameLoop.stop();
-
+      this.serverSpace?.dispose();
       this.onDispose();
     },
   };
@@ -510,7 +554,7 @@ export abstract class GameSession<
       animation: "idle",
       latency: 0,
       jitter: 0,
-      plugins: [],
+      plugins: "",
     };
   }
 

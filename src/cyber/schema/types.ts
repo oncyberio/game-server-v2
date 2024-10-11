@@ -7,6 +7,7 @@ import {
 } from "@colyseus/schema";
 import { createArray } from "./ArrayImpl";
 import { createMap } from "./MapImpl";
+import { ExtSchema, register } from "./register";
 
 interface XY {
   x: number;
@@ -286,13 +287,25 @@ export class State {
       // console.log("Creating schema", this.constructor.name);
 
       createSchema(info);
+
+      if (this.constructor["$$ext_entities"]) {
+        // add to entities schema
+        type((this.constructor as any).$$ext_entities)(
+          info.cSchema.prototype,
+          "$$ext_entities"
+        );
+      }
     }
 
     this.$$cInst = new info.cSchema();
 
     (this.$$cInst as any).$$entity = this;
 
-    // console.log("Schema created", this.constructor.name);
+    let extEntites = this.constructor["$$ext_entities"];
+
+    if (extEntites) {
+      this.$$cInst["$$ext_entities"] = new extEntites();
+    }
 
     Object.keys(info.params).forEach((field) => {
       //
@@ -343,6 +356,22 @@ export class State {
 
   toJSON() {
     return this.$$cInst.toJSON();
+  }
+
+  hasChanges() {
+    //
+    return this.$$cInst["$changes"].changes.size > 0;
+  }
+
+  static $$registerEntity(entityKey: string, state: EntityState) {
+    //
+    const self = this as any;
+
+    self.$$ext_entities ??= class MyExtSchema extends ExtSchema {};
+
+    // console.log("Registering entity", entityKey, self.$$ext_entities);
+
+    register(self.$$ext_entities, entityKey, state);
   }
 }
 

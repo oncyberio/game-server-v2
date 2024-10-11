@@ -17,7 +17,7 @@ export interface PlayerData {
   isAnonymous?: boolean;
   role?: PlayerRole;
   latency: number;
-  plugins: string[];
+  plugins: string;
   jitter: number;
   // Server authoritative state
   position: { x: number; y: number; z: number };

@@ -12,12 +12,9 @@ const builtinExcludes = {
 };
 //
 
-interface ServerApi {
-  addRpcHandler: (id: string, handler: (data: any) => any) => void;
-}
 export interface LoadGameOptions {
   isDraft: boolean;
-  serverApi: ServerApi;
+  serverApi: any;
   debugPhysics: boolean;
   filter: (component: any) => boolean;
 }
