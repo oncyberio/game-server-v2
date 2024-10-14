@@ -169,4 +169,8 @@ export interface PlayerStatePayload {
 
 export type RpcReply = (data: any) => void;
 
-export type RpcHandler = (data: any, reply: RpcReply) => void;
+export type RpcHandler = (
+  data: any,
+  reply: RpcReply,
+  sessionId: string
+) => void;

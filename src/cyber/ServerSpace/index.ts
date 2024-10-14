@@ -102,7 +102,7 @@ export class ServerSpace {
       this.update(dt);
     }, 1000 / 60);
 
-    this.session.onRpc("@@engine", async (request, reply) => {
+    this.session.onRpc("@@engine", async (request, reply, sessionId) => {
       //
       try {
         const { id, method, args } = request;
@@ -110,13 +110,16 @@ export class ServerSpace {
         const instance = this._getRpcRecipient(id);
 
         if (instance == null) {
-          throw new Error("Instance not found");
+          throw new Error("Instance not found " + id);
         }
 
         if (typeof instance.$$dispatchRpc !== "function") {
           throw new Error("Rpc method not found");
         }
-        const data = await instance.$$dispatchRpc(method, args);
+        const data = await instance.$$dispatchRpc(
+          method,
+          args.concat(sessionId)
+        );
 
         reply({ value: data });
         //

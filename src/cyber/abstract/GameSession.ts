@@ -473,7 +473,7 @@ export abstract class GameSession<
             : () => {};
 
           handlers.forEach((handler) => {
-            handler(message.data, reply);
+            handler(message.data, reply, sessionId);
           });
         }
       } else if (message.type === Messages.PING) {
