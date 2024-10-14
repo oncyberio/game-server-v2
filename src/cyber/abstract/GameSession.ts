@@ -22,6 +22,7 @@ import { ServerSpace } from "../ServerSpace";
 const defaults = {
   autoStart: false,
   serverEngine: false,
+  authoritativePosition: false,
   reconnectTimeout: 0,
   patchRate: 20, // fps
   tickRate: 20, // fps
@@ -96,7 +97,7 @@ export abstract class GameSession<
 
   pingInterval = 5000;
 
-  autoStart;
+  autoStart = false;
 
   joinAfterStart = true;
 
@@ -105,6 +106,8 @@ export abstract class GameSession<
   serverEngine = {
     enabled: false,
   };
+
+  authoritativePosition = false;
 
   serverSpace: ServerSpace = null;
 
@@ -315,8 +318,12 @@ export abstract class GameSession<
 
       let settings = Object.assign({}, defaults, mulitplayer);
 
-      this.serverEngine.enabled = settings.serverEngine;
-      this.autoStart = settings.autoStart;
+      this.serverEngine.enabled =
+        settings.serverEngine ?? defaults.serverEngine;
+      this.autoStart = settings.autoStart && defaults.autoStart;
+      this.authoritativePosition =
+        settings.authoritativePosition ?? defaults.authoritativePosition;
+
       this.maxPlayers = setMinMax(
         settings.maxPlayers,
         defaults.maxPlayers,
@@ -599,7 +606,12 @@ export abstract class GameSession<
 
   onPlayerStateMsg(payload: PlayerStatePayload, player: PlayerState) {
     //
-    player.update(payload);
+    const excludeTransform = this.authoritativePosition;
+
+    player.update(payload, {
+      position: excludeTransform,
+      rotation: excludeTransform,
+    });
   }
 
   onMessage(msg: ClientMsg, player: PlayerData) {

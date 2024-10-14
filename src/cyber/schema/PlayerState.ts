@@ -24,13 +24,23 @@ export class PlayerState extends Schema {
   connected: boolean = false;
   address: string = "";
 
-  update(payload: PlayerStatePayload) {
+  update(
+    payload: PlayerStatePayload,
+    exclude: {
+      position?: boolean;
+      rotation?: boolean;
+      animation?: boolean;
+      scale?: boolean;
+      vrmUrl?: boolean;
+      text?: boolean;
+    } = {}
+  ) {
     //
-    this.position.assign(payload.position);
-    this.rotation.assign(payload.rotation);
-    this.animation = payload.animation;
-    this.scale = payload.scale;
-    this.vrmUrl = payload.vrmUrl;
-    this.text = payload.text;
+    if (!exclude.position) this.position.assign(payload.position);
+    if (!exclude.rotation) this.rotation.assign(payload.rotation);
+    if (!exclude.animation) this.animation = payload.animation;
+    if (!exclude.scale) this.scale = payload.scale;
+    if (!exclude.vrmUrl) this.vrmUrl = payload.vrmUrl;
+    if (!exclude.text) this.text = payload.text;
   }
 }
