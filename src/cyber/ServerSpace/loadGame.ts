@@ -1,4 +1,4 @@
-import { GameLoader } from "@oogg/game-server";
+import { GameLoader } from "@oogg/server-engine";
 
 const builtinExcludes = {
   fog: true,
