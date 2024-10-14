@@ -17,7 +17,7 @@ export class ServerSpace {
 
   state: RoomState = null;
 
-  serverProxy = null;
+  serverApi = null;
 
   dt = 1 / 60;
   iv = null;
@@ -67,7 +67,7 @@ export class ServerSpace {
     //
     this.session = opts.session;
 
-    this.serverProxy = new ServerApi(this.session);
+    this.serverApi = new ServerApi(this.session);
 
     const gameData = this.session.gameData;
 
@@ -76,7 +76,7 @@ export class ServerSpace {
     const res = await loadGame(gameData, {
       debugPhysics: opts.debugPhysics ?? true,
       serverApi: {
-        Server: this.serverProxy,
+        GameServer: this.serverApi,
       },
       isDraft: opts.isDraft ?? true,
       filter: (component: any) => {
@@ -191,7 +191,7 @@ export class ServerSpace {
 
   _onAfterPatch(bytes) {
     //
-    this.serverProxy._onAfterPatch(bytes);
+    this.serverApi._onAfterPatch(bytes);
   }
 
   onLeave(player: PlayerState) {

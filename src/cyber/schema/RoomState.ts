@@ -59,7 +59,6 @@ export class RoomState extends ExtensibleSchema {
   @type("string") snapshotId: string = null;
   @type("number") timestamp: number = 0;
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
-  @type(GameTimer) timer: GameTimer = new GameTimer();
   @type(RoomSettings) settings = new RoomSettings();
 
   addPlayer(data: any) {

@@ -362,17 +362,6 @@ export class State {
     //
     return this.$$cInst["$changes"].changes.size > 0;
   }
-
-  static $$registerEntity(entityKey: string, state: EntityState) {
-    //
-    const self = this as any;
-
-    self.$$ext_entities ??= class MyExtSchema extends ExtSchema {};
-
-    // console.log("Registering entity", entityKey, self.$$ext_entities);
-
-    register(self.$$ext_entities, entityKey, state);
-  }
 }
 
 function createSchema(info: EntityInfo) {

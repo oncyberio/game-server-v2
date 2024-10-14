@@ -25,7 +25,9 @@ export interface PlayerData {
   animation: string;
 }
 
-export const CYBER_MSG = 1000;
+export const CYBER_MSG = 999_999;
+
+export type MsgType = string | number;
 
 export const GameActions = {
   START: 1,

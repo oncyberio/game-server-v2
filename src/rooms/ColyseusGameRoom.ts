@@ -1,8 +1,5 @@
-import type { IncomingMessage } from "http";
 import { Room, Client, logger, SchemaSerializer } from "@colyseus/core";
-import { CYBER_MSG } from "../cyber/abstract/types";
 import { DefaultCyberGame } from "./DefaultCyberGame";
-import { GameApi } from "../cyber/abstract/GameApi";
 import { ScriptFactory } from "../cyber/scripting";
 
 const defaults = {
@@ -30,8 +27,6 @@ export class ColyseusGameRoom extends Room {
     // this.setSimulationInterval(() => {
     //     this._room._CALLBACKS_.tick();
     // }, this.tickRate);
-
-    this.onMessage(CYBER_MSG, this._onCyberMsg);
   }
 
   private _setRoomHandler(handler: any) {
@@ -75,22 +70,19 @@ export class ColyseusGameRoom extends Room {
     return client;
   }
 
-  sendRaw(msg, sessionId: string) {
-    // console.log("sendRaw", msg, sessionId);
-    if (!msg?.type) {
-      console.error("Invalid message", msg);
-      return;
-    }
-    this.getClient(sessionId)?.send(msg.type, msg.data ?? null);
+  sendMsg(type: any, msg: any, sessionId: string) {
+    this.getClient(sessionId)?.send(type, msg);
   }
 
-  sendMsg(msg: any, sessionId: string) {
-    this.getClient(sessionId)?.send(CYBER_MSG, msg);
-  }
-
-  broadcastMsg(msg: any, opts: { except?: string[] } = {}) {
+  broadcastMsg(type: any, msg: any, opts: { except?: string[] } = {}) {
     let except = opts?.except?.map((id) => this.getClient(id)).filter(Boolean);
-    this.broadcast(CYBER_MSG, msg, { except });
+    this.broadcast(type, msg, { except });
+  }
+
+  onMsg(type: any, callback: (msg: any, sessionId: string) => void) {
+    return this.onMessage(type, (client, message) => {
+      callback(message, client.sessionId);
+    });
   }
 
   disconnectPlayer(sessionId: string, reason = 4000) {
@@ -135,7 +127,7 @@ export class ColyseusGameRoom extends Room {
 
       this._logger.info("Creating Room for game", this._gameId);
 
-      await roomHandler._CALLBACKS_.start();
+      await roomHandler._CALLBACKS_.create();
 
       this._setRoomHandler(roomHandler);
 
@@ -274,9 +266,4 @@ export class ColyseusGameRoom extends Room {
 
     this._roomHandler?._CALLBACKS_.shutdown();
   }
-
-  private _onCyberMsg = (client: Client, message: any) => {
-    //
-    this._roomHandler?._CALLBACKS_.message(message, client.sessionId);
-  };
 }

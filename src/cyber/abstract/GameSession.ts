@@ -1,6 +1,8 @@
+import { EventEmitter } from "events";
 import { type IncomingMessage } from "http";
 import { GameLoop } from "./GameLoop";
 import {
+  CYBER_MSG,
   PLAYER_ROLES,
   PlayerRole,
   Messages,
@@ -25,19 +27,33 @@ const defaults = {
 export interface GameRoomCtx {
   gameId: string;
   gameData: any;
-  sendMsg: (msg: any, sessionId: string) => void;
-  broadcastMsg: (msg: any, options?: { except?: string[] }) => void;
-  sendRaw: (msg: any, sessionId: string) => void;
+
+  sendMsg: (type: any, msg: any, sessionId: string) => void;
+  broadcastMsg: (type: any, msg: any, options?: { except?: string[] }) => void;
+  onMsg(type: any, callback: (msg: any, sessionId: string) => void): () => void;
+
   disconnectPlayer: (sessionId: string) => void;
   nbConnected: number;
   setState: (state: any) => void;
 }
+
+export const EVENTS = {
+  //
+  join: "join",
+  leave: "leave",
+  message: "message",
+  dispose: "dispose",
+} as const;
+
+export type RoomEvent = keyof typeof EVENTS;
 
 export abstract class GameSession<
   State extends RoomState = RoomState,
   ClientMsg = any,
   RoomMsg = any
 > {
+  private _emitter = new EventEmitter();
+
   private _gameLoop = new GameLoop();
 
   Schema: any = class extends RoomState {};
@@ -58,16 +74,28 @@ export abstract class GameSession<
 
   reconnectTimeout = 0;
 
-  showLogs = false;
-
   serverEngine = {
     enabled: false,
   };
 
   serverSpace: ServerSpace = null;
 
-  constructor(private ctx: GameRoomCtx) {
+  constructor(public ctx: GameRoomCtx) {
     //
+    this.ctx.onMsg(CYBER_MSG, this._CALLBACKS_.cyberMsg);
+  }
+
+  on(event: RoomEvent, cb: (...args: any[]) => void): () => void {
+    //
+    this._emitter.on(event, cb);
+
+    return () => {
+      this._emitter.off(event, cb);
+    };
+  }
+
+  off(event: RoomEvent, cb: (...args: any[]) => void) {
+    this._emitter.off(event, cb);
   }
 
   get gameId() {
@@ -80,37 +108,6 @@ export abstract class GameSession<
 
   get status() {
     return this._gameLoop.status;
-  }
-
-  sendRaw(msg: { type: string; data: any }, playerId: string) {
-    this.ctx.sendRaw(msg, playerId);
-  }
-
-  send(msg: RoomMsg, playerId: string) {
-    this.ctx.sendMsg(
-      {
-        type: Messages.ROOM_MESSAGE,
-        data: msg,
-      },
-      playerId
-    );
-  }
-
-  broadcast(msg: RoomMsg, except?: string[]) {
-    //
-    if (except && !isArrayOfStrings(except)) {
-      //
-      console.error("invalid exclude argument");
-      return;
-    }
-
-    this.ctx.broadcastMsg(
-      {
-        type: Messages.ROOM_MESSAGE,
-        data: msg,
-      },
-      { except }
-    );
   }
 
   startGame(countdownSecs: number) {
@@ -126,6 +123,7 @@ export abstract class GameSession<
       const delay = Math.max(0, countdownMillis - latency);
 
       this.ctx.sendMsg(
+        CYBER_MSG,
         {
           type: Messages.ROOM_GAME_ACTION,
           action: GameActions.START,
@@ -139,7 +137,6 @@ export abstract class GameSession<
       setTimeout(() => {
         //
         this._gameLoop.start();
-        this.state.timer.reset();
         this.serverSpace?.startGame();
         resolve();
       }, countdownMillis);
@@ -149,7 +146,7 @@ export abstract class GameSession<
   stopGame() {
     this._gameLoop.stop();
     this.serverSpace?.stopGame();
-    this.ctx.broadcastMsg({
+    this.ctx.broadcastMsg(CYBER_MSG, {
       type: Messages.ROOM_GAME_ACTION,
       action: GameActions.STOP,
     });
@@ -219,11 +216,8 @@ export abstract class GameSession<
         sessionId: playerData.sessionId,
       };
 
-      if (this.showLogs) {
-        console.log("ping", pingId, playerData.sessionId);
-      }
-
       this.ctx.sendMsg(
+        CYBER_MSG,
         { type: Messages.PING, data: pingId },
         playerData.sessionId
       );
@@ -267,10 +261,6 @@ export abstract class GameSession<
       // playerData.latency = (Date.now() - pending.time) / 2;
 
       delete this._pendingPings[playerData.sessionId];
-
-      if (this.showLogs) {
-        console.log("pong", pingId, playerData.sessionId, latency, jitter);
-      }
     },
   };
 
@@ -289,20 +279,20 @@ export abstract class GameSession<
    * internal callbacks
    */
   _CALLBACKS_ = {
-    start: async () => {
+    create: async () => {
       //
       if (this.serverEngine.enabled) {
-        console.log("Server engine enabled");
         this.serverSpace = new ServerSpace();
+
+        // We must run the server space, so that the space scripts
+        // can attach their schemas to the room state
+        await this.serverSpace?.init({
+          session: this,
+        });
       }
 
-      // We must run the server space, so that the space scripts
-      // can attach their schemas to the room state
-      await this.serverSpace?.init({
-        session: this,
-      });
-
       await this.onPreload();
+
       this.state ??= new this.Schema();
       (this as any).ctx.setState(this.state);
 
@@ -312,24 +302,19 @@ export abstract class GameSession<
       this.state.settings.reconnectTimeout = this.reconnectTimeout;
       this.state.settings.tickRate = tickRate;
       this.state.settings.patchRate = patchRate;
-
-      if (typeof this.constructor.prototype.onUpdate === "function") {
-        this._gameLoop.onTick = this._CALLBACKS_.tick;
-      }
     },
 
     join: async (params: object) => {
       //
       const playerData = this.getPlayerData(params);
       this.validateJoin(playerData);
+      this._emitter.emit(EVENTS.join, playerData);
       const player = this.state.addPlayer(playerData);
       await Promise.resolve(this.onJoin(player));
       this.serverSpace?.onJoin(player);
       // send ping to client to measure latency
       // this._PING_._pingLoop(playerData.sessionId);
-      if (this.showLogs) {
-        console.log("player joined", playerData.sessionId);
-      }
+      console.log("player joined", playerData.sessionId);
     },
 
     disconnect: (sessionId: string) => {
@@ -360,9 +345,7 @@ export abstract class GameSession<
         return;
       }
 
-      if (this.showLogs) {
-        console.log("player left", sessionId);
-      }
+      console.log("player left", sessionId);
 
       // this._PING_._clearPingLoop(sessionId);
 
@@ -377,22 +360,8 @@ export abstract class GameSession<
       }
 
       this.onLeave(player);
-
       this.serverSpace.onLeave(player);
-    },
-
-    tick: (dt: number) => {
-      // safety check
-      if (this.ctx.nbConnected <= 0) {
-        console.warn(
-          "No players connected Yet the game loop is turning, stopping game loop"
-        );
-        this._gameLoop.stop();
-
-        return;
-      }
-
-      this.onUpdate(dt);
+      this._emitter.emit(EVENTS.leave, player);
     },
 
     prevTimestamp: Date.now(),
@@ -416,12 +385,7 @@ export abstract class GameSession<
       // this._CALLBACKS_.prevTimestamp = this.state.timestamp;
     },
 
-    afterPatch: (bytes) => {
-      //
-      this.serverSpace._onAfterPatch(bytes);
-    },
-
-    message: (message: ClientMessage<any>, sessionId: string) => {
+    cyberMsg: (message: ClientMessage<any>, sessionId: string) => {
       // compat for broadcast/send messages
       // that were sent as GAME_MESSAGE type
       if (message.type === Messages.RPC) {
@@ -433,6 +397,7 @@ export abstract class GameSession<
             ? (data) => {
                 // console.log("replying", message, data);
                 this.ctx.sendMsg(
+                  CYBER_MSG,
                   {
                     type: Messages.RPC,
                     rpcId: message.rpcId,
@@ -613,11 +578,4 @@ export abstract class GameSession<
   onDispose() {
     //
   }
-}
-
-function isArrayOfStrings(exclude) {
-  return (
-    Array.isArray(exclude) &&
-    exclude.every((element) => typeof element === "string")
-  );
 }
