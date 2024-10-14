@@ -35,6 +35,9 @@ export class DefaultCyberGame extends GameSession {
 
   onMessage(message: any, player: PlayerState): void {
     //
+    super.onMessage(message, player);
+
+    //
     // console.log("Message received from", player.sessionId, message);
     // if (message.type === "collect") {
     //   //

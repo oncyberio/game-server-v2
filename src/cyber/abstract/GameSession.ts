@@ -20,9 +20,35 @@ import { Server } from "colyseus";
 import { ServerSpace } from "../ServerSpace";
 
 const defaults = {
-  PATCH_RATE: 20, // fps
-  TICK_RATE: 20, // fps
+  autoStart: false,
+  serverEngine: false,
+  reconnectTimeout: 0,
+  patchRate: 20, // fps
+  tickRate: 20, // fps
+  maxPlayers: 500,
 };
+
+const mins = {
+  reconnectTimeout: 0,
+  patchRate: 1,
+  tickRate: 1,
+  maxPlayers: 2,
+};
+
+const maxs = {
+  reconnectTimeout: 60,
+  patchRate: 20,
+  tickRate: 60,
+  maxPlayers: 500,
+};
+
+function setMinMax(value: number, def: number, min: number, max: number) {
+  // if not a number or NaN, return default
+  if (typeof value !== "number" || value !== value) {
+    return def;
+  }
+  return Math.min(Math.max(value, min), max);
+}
 
 export interface GameRoomCtx {
   gameId: string;
@@ -60,15 +86,17 @@ export abstract class GameSession<
 
   state: State;
 
-  readonly tickRate = defaults.TICK_RATE;
+  tickRate = defaults.tickRate;
 
-  readonly patchRate = defaults.PATCH_RATE;
+  patchRate = defaults.patchRate;
 
-  readonly simulatedLatency?: number;
+  simulatedLatency?: number;
 
-  maxPlayers = Infinity;
+  maxPlayers = 500;
 
   pingInterval = 5000;
+
+  autoStart;
 
   joinAfterStart = true;
 
@@ -281,12 +309,39 @@ export abstract class GameSession<
   _CALLBACKS_ = {
     create: async () => {
       //
+      const mulitplayer = this.gameData.components["multiplayer"] ?? {};
+
+      console.log("multiplayer settings", mulitplayer);
+
+      let settings = Object.assign({}, defaults, mulitplayer);
+
+      this.serverEngine.enabled = settings.serverEngine;
+      this.autoStart = settings.autoStart;
+      this.maxPlayers = setMinMax(
+        settings.maxPlayers,
+        defaults.maxPlayers,
+        mins.maxPlayers,
+        maxs.maxPlayers
+      );
+      this.patchRate = setMinMax(
+        settings.patchRate,
+        defaults.patchRate,
+        mins.patchRate,
+        maxs.patchRate
+      );
+      this.reconnectTimeout = setMinMax(
+        settings.reconnectTimeout,
+        defaults.reconnectTimeout,
+        mins.reconnectTimeout,
+        maxs.reconnectTimeout
+      );
+
       if (this.serverEngine.enabled) {
         this.serverSpace = new ServerSpace();
 
         // We must run the server space, so that the space scripts
         // can attach their schemas to the room state
-        await this.serverSpace?.init({
+        await this.serverSpace.init({
           session: this,
         });
       }
@@ -296,8 +351,8 @@ export abstract class GameSession<
       this.state ??= new this.Schema();
       (this as any).ctx.setState(this.state);
 
-      const tickRate = this.tickRate ?? defaults.TICK_RATE;
-      const patchRate = this.patchRate ?? defaults.PATCH_RATE;
+      const tickRate = this.tickRate || defaults.tickRate;
+      const patchRate = this.patchRate || defaults.patchRate;
       this._gameLoop.tickRate = tickRate;
       this.state.settings.reconnectTimeout = this.reconnectTimeout;
       this.state.settings.tickRate = tickRate;
@@ -360,7 +415,7 @@ export abstract class GameSession<
       }
 
       this.onLeave(player);
-      this.serverSpace.onLeave(player);
+      this.serverSpace?.onLeave(player);
       this._emitter.emit(EVENTS.leave, player);
     },
 
@@ -388,6 +443,7 @@ export abstract class GameSession<
     cyberMsg: (message: ClientMessage<any>, sessionId: string) => {
       // compat for broadcast/send messages
       // that were sent as GAME_MESSAGE type
+
       if (message.type === Messages.RPC) {
         let handlers = this._rpcRecipients[message.rpcId];
 
@@ -459,7 +515,8 @@ export abstract class GameSession<
           this.onPlayerStateMsg(payload, player);
           //
         } else if (msg.type == Messages.GAME_MESSAGE) {
-          this.onMessage?.(msg.data, player);
+          //
+          this.onMessage(msg.data, player);
 
           // this.broadcastMsg({ type: "state", state: this.room.state })
         } else if (msg.type == Messages.GAME_REQUEST) {
@@ -468,14 +525,6 @@ export abstract class GameSession<
             case GameActions.START:
               this.onRequestStart(msg.data);
               break;
-          }
-        } else if (msg.type == Messages.BROADCAST) {
-          //
-          // this.broadcast(msg.data, msg.exclude);
-        } else if (msg.type == Messages.SEND_DM) {
-          //
-          if (this.state.players.has(msg.playerId)) {
-            // this.send(msg, msg.playerId);
           }
         } else {
           //
@@ -553,7 +602,50 @@ export abstract class GameSession<
     player.update(payload);
   }
 
-  onMessage(msg: ClientMsg, player: PlayerData) {}
+  onMessage(msg: ClientMsg, player: PlayerData) {
+    //
+
+    let message = msg as any;
+
+    if (message.type === "broadcast") {
+      //
+      const { exclude, ...data } = message;
+
+      if (
+        exclude &&
+        (!Array.isArray(exclude) ||
+          exclude.some((sessionId) => typeof sessionId !== "string"))
+      ) {
+        console.warn("invalid exclude argument");
+        return;
+      }
+
+      this.ctx.broadcastMsg(
+        CYBER_MSG,
+        {
+          type: Messages.ROOM_MESSAGE,
+          data,
+        },
+        { except: exclude }
+      );
+    } else if (message.type === "send") {
+      //
+      if (
+        message.playerId &&
+        typeof message.playerId === "string" &&
+        this.state.players.has(message.playerId)
+      ) {
+        this.ctx.sendMsg(
+          CYBER_MSG,
+          {
+            type: Messages.ROOM_MESSAGE,
+            data: message.data,
+          },
+          message.playerId
+        );
+      }
+    }
+  }
 
   private _rpcRecipients: Record<string, Set<RpcHandler>> = {};
 

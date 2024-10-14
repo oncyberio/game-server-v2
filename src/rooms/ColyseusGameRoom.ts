@@ -33,7 +33,7 @@ export class ColyseusGameRoom extends Room {
     //
     this._roomHandler = handler;
 
-    const patchRate = this._roomHandler.patchRate ?? 20; // 20 fps
+    const patchRate = +this._roomHandler.patchRate || 20; // 20 fps
 
     this.setPatchRate(1000 / patchRate); // colyseus uses ms
 
@@ -45,7 +45,7 @@ export class ColyseusGameRoom extends Room {
     // }
 
     this.maxClients = Math.min(
-      this._roomHandler.maxPlayers ?? defaults.MAX_PLAYERS,
+      +this._roomHandler.maxPlayers || defaults.MAX_PLAYERS,
       defaults.MAX_PLAYERS
     );
   }
@@ -80,6 +80,7 @@ export class ColyseusGameRoom extends Room {
   }
 
   onMsg(type: any, callback: (msg: any, sessionId: string) => void) {
+    //
     return this.onMessage(type, (client, message) => {
       callback(message, client.sessionId);
     });
