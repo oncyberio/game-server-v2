@@ -195,6 +195,8 @@ function createObjectSchema(state: Record<string, EntityState>): EntityInfo {
 
   let schema = class EntitySchema extends Schema {
     //
+    _netVersion: number;
+
     private $$cache: Record<string, any> = {};
 
     constructor() {
@@ -203,6 +205,7 @@ function createObjectSchema(state: Record<string, EntityState>): EntityInfo {
         const field = keys[i];
         this[field] = entities[field].create();
       }
+      this._netVersion = 0;
     }
 
     $set(key: string, value: any) {
@@ -225,10 +228,13 @@ function createObjectSchema(state: Record<string, EntityState>): EntityInfo {
           this.$set(key, data[key]);
         }
         this.$$cache = data;
+        this._netVersion++;
       }
       return this;
     }
   };
+
+  type("number")(schema.prototype, "_netVersion");
 
   Object.keys(state).forEach((field) => {
     //
