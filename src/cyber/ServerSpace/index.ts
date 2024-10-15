@@ -129,7 +129,7 @@ export class ServerSpace {
         //
       } catch (err) {
         //
-        console.error("Error", err);
+        // console.error("Error", err);
 
         reply({ error: err.message });
       }
