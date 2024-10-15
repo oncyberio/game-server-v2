@@ -1,3 +1,4 @@
+import * as ethers from "ethers";
 import { loadGame } from "./loadGame";
 import { GameSession } from "../abstract/GameSession";
 import { RoomState } from "../schema/RoomState";
@@ -77,6 +78,9 @@ export class ServerSpace {
       debugPhysics: opts.debugPhysics ?? true,
       serverApi: {
         GameServer: this.serverApi,
+      },
+      serverLibs: {
+        ethers,
       },
       isDraft: opts.isDraft ?? true,
       filter: (component: any) => {

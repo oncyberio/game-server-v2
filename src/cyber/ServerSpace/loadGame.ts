@@ -15,6 +15,7 @@ const builtinExcludes = {
 export interface LoadGameOptions {
   isDraft: boolean;
   serverApi: any;
+  serverLibs: any;
   debugPhysics: boolean;
   filter: (component: any) => boolean;
 }
@@ -23,6 +24,7 @@ const defOptions = {
   isDraft: true,
   debugPhysics: false,
   serverApi: null,
+  serverLibs: null,
   filter: (component: any) => {
     return component.collider?.enabled;
   },
