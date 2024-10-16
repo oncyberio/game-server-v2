@@ -35,11 +35,11 @@
     "@colyseus/monitor": "^0.15.0",
     "@colyseus/playground": "^0.15.3",
     "@colyseus/tools": "^0.15.42",
-    "@oogg/server-engine": "^1.0.0-alpha-6",
+    "@oogg/server-engine": "^1.0.0-alpha-8",
     "async-mutex": "^0.5.0",
     "colyseus": "^0.15.0",
     "cors": "^2.8.5",
-    "ethers": "^6.13.3",
+    "ethers": "6.13.3",
     "express": "^4.18.2",
     "express-basic-auth": "^1.2.1"
   }

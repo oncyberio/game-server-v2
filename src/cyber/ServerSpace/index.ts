@@ -4,6 +4,8 @@ import { GameSession } from "../abstract/GameSession";
 import { RoomState } from "../schema/RoomState";
 import { PlayerState } from "../schema/PlayerState";
 import { ServerApi } from "./ServerApi";
+// @ts-ignore
+import { Web3Api, LocalProvider } from "@oogg/server-engine";
 
 const USE_SERVER_REGEX = /^\s*"use server"/;
 export class ServerSpace {
@@ -78,6 +80,12 @@ export class ServerSpace {
       debugPhysics: opts.debugPhysics ?? true,
       serverApi: {
         GameServer: this.serverApi,
+        Web3: new Web3Api({
+          web3provider: new LocalProvider({
+            privateKey: process.env.PRIVATE_KEY,
+            alchemyKey: process.env.ALCHEMY_KEY
+          }),
+        })
       },
       serverLibs: {
         ethers,
