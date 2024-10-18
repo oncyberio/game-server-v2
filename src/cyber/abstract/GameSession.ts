@@ -16,8 +16,7 @@ import {
 import { RoomState } from "../schema/RoomState";
 import { calcLatencyIPDTV } from "./utils";
 import { PlayerState } from "../schema/PlayerState";
-import { Server } from "colyseus";
-import { ServerSpace } from "../ServerSpace";
+import { type SpaceProxy, createServerSpace } from "../ServerSpace/thread";
 
 const defaults = {
   autoStart: false,
@@ -28,6 +27,8 @@ const defaults = {
   tickRate: 20, // fps
   maxPlayers: 500,
 };
+
+export type RoomParams = typeof defaults;
 
 const mins = {
   reconnectTimeout: 0,
@@ -109,11 +110,15 @@ export abstract class GameSession<
 
   authoritativePosition = false;
 
-  serverSpace: ServerSpace = null;
+  spaceProxy: SpaceProxy = null;
 
   constructor(public ctx: GameRoomCtx) {
     //
     this.ctx.onMsg(CYBER_MSG, this._CALLBACKS_.cyberMsg);
+
+    (this.ctx as any).onMessage("*", (client, type, message) => {
+      this.spaceProxy.onMessage(type, message, client.sessionId);
+    });
   }
 
   on(event: RoomEvent, cb: (...args: any[]) => void): () => void {
@@ -168,7 +173,7 @@ export abstract class GameSession<
       setTimeout(() => {
         //
         this._gameLoop.start();
-        this.serverSpace?.startGame();
+        this.spaceProxy?.startGame();
         resolve();
       }, countdownMillis);
     });
@@ -176,7 +181,7 @@ export abstract class GameSession<
 
   stopGame() {
     this._gameLoop.stop();
-    this.serverSpace?.stopGame();
+    this.spaceProxy?.stopGame();
     this.ctx.broadcastMsg(CYBER_MSG, {
       type: Messages.ROOM_GAME_ACTION,
       action: GameActions.STOP,
@@ -344,12 +349,15 @@ export abstract class GameSession<
       );
 
       if (this.serverEngine.enabled) {
-        this.serverSpace = new ServerSpace();
+        //
+        this.spaceProxy = createServerSpace();
 
         // We must run the server space, so that the space scripts
         // can attach their schemas to the room state
-        await this.serverSpace.init({
+        await this.spaceProxy.init({
           session: this,
+          debugPhysics: true,
+          isDraft: true,
         });
       }
 
@@ -364,6 +372,20 @@ export abstract class GameSession<
       this.state.settings.reconnectTimeout = this.reconnectTimeout;
       this.state.settings.tickRate = tickRate;
       this.state.settings.patchRate = patchRate;
+
+      console.log("Sending sync request", this.gameId);
+
+      await this.spaceProxy.sync({
+        state: this.state.toJSON(),
+        params: {
+          authoritativePosition: this.authoritativePosition,
+          maxPlayers: this.maxPlayers,
+          tickRate,
+          patchRate,
+        },
+      });
+
+      console.log("Room created", this.gameId);
     },
 
     join: async (params: object) => {
@@ -373,7 +395,7 @@ export abstract class GameSession<
       this._emitter.emit(EVENTS.join, playerData);
       const player = this.state.addPlayer(playerData);
       await Promise.resolve(this.onJoin(player));
-      this.serverSpace?.onJoin(player);
+      this.spaceProxy?.onJoin(player);
       // send ping to client to measure latency
       // this._PING_._pingLoop(playerData.sessionId);
       console.log("player joined", playerData.sessionId);
@@ -422,15 +444,15 @@ export abstract class GameSession<
       }
 
       this.onLeave(player);
-      this.serverSpace?.onLeave(player);
+      this.spaceProxy?.onLeave(player);
       this._emitter.emit(EVENTS.leave, player);
     },
 
     prevTimestamp: Date.now(),
 
-    beforePatch: () => {
+    beforePatch: async () => {
       //
-      this.serverSpace?.onBeforePatch();
+      await this.spaceProxy?.onBeforePatch(this.state.toJSON());
 
       // if (this.state["$changes"].changes.size > 0) {
       //   console.log("beforePatch", this.state["$changes"].changes.size);
@@ -520,6 +542,8 @@ export abstract class GameSession<
           };
 
           this.onPlayerStateMsg(payload, player);
+
+          this.spaceProxy?.onPlayerState(player.toJSON());
           //
         } else if (msg.type == Messages.GAME_MESSAGE) {
           //
@@ -543,7 +567,7 @@ export abstract class GameSession<
     shutdown: () => {
       //
       this._gameLoop.stop();
-      this.serverSpace?.dispose();
+      this.spaceProxy?.dispose();
       this.onDispose();
     },
   };

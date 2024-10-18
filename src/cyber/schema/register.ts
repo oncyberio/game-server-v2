@@ -205,6 +205,7 @@ function createObjectSchema(state: Record<string, EntityState>): EntityInfo {
         const field = keys[i];
         this[field] = entities[field].create();
       }
+
       this._netVersion = 0;
     }
 
@@ -227,8 +228,11 @@ function createObjectSchema(state: Record<string, EntityState>): EntityInfo {
           const key = keys[i];
           this.$set(key, data[key]);
         }
+        if (data._netVersion != null) {
+          this._netVersion = data._netVersion;
+        }
+
         this.$$cache = data;
-        this._netVersion++;
       }
       return this;
     }

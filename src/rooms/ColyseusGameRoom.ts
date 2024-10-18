@@ -130,6 +130,8 @@ export class ColyseusGameRoom extends Room {
 
       await roomHandler._CALLBACKS_.create();
 
+      if (this._disposed) return;
+
       this._setRoomHandler(roomHandler);
 
       this.setMetadata({
@@ -155,9 +157,24 @@ export class ColyseusGameRoom extends Room {
   }
   */
 
-  onBeforePatch() {
+  _nbLog = 0;
+
+  log(...args: any[]) {
+    if (this._nbLog++ < 50) {
+      console.log(...args);
+    }
+  }
+
+  // @ts-ignore
+  async broadcastPatch() {
     //
-    this._roomHandler?._CALLBACKS_.beforePatch();
+    // const now = Date.now();
+    await this._roomHandler?._CALLBACKS_.beforePatch();
+    // this.log("Patch time", Date.now() - now);
+
+    if (this._disposed) return;
+
+    return super.broadcastPatch();
   }
 
   async onJoin(client: Client, options: any, auth: any) {
@@ -246,6 +263,8 @@ export class ColyseusGameRoom extends Room {
 
       await this.allowReconnection(client, reconnectTimeout / 1000);
 
+      if (this._disposed) return;
+
       this._logger.info("Client has reconnected", client.sessionId);
 
       this._roomHandler._CALLBACKS_.reconnect(client.sessionId);
@@ -261,8 +280,14 @@ export class ColyseusGameRoom extends Room {
     }
   }
 
+  private _disposed = false;
+
   onDispose(): void | Promise<any> {
     //
+    if (this._disposed) return;
+
+    this._disposed = true;
+
     this._logger.info("Room disposed");
 
     this._roomHandler?._CALLBACKS_.shutdown();

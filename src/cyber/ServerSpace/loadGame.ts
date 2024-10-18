@@ -30,6 +30,8 @@ const defOptions = {
   },
 };
 
+const loader = new GameLoader();
+
 export async function loadGame(gameData, opts: Partial<LoadGameOptions> = {}) {
   //
   console.log(
@@ -40,11 +42,16 @@ export async function loadGame(gameData, opts: Partial<LoadGameOptions> = {}) {
 
   opts = Object.assign({}, defOptions, opts);
 
-  const loader = new GameLoader();
-
   const result = await loader.loadGameData(gameData, opts);
 
   console.log("Game space created");
 
   return result;
+}
+
+export function exitGame() {
+  //
+  console.log("Exiting game");
+
+  loader.exit();
 }
