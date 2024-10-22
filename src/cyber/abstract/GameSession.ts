@@ -319,8 +319,6 @@ export abstract class GameSession<
       //
       const mulitplayer = this.gameData.components["multiplayer"] ?? {};
 
-      console.log("multiplayer settings", mulitplayer);
-
       let settings = Object.assign({}, defaults, mulitplayer);
 
       this.serverEngine.enabled =

@@ -2,9 +2,6 @@ import {
   // @ts-ignore
   Worker,
   isMainThread,
-  threadId,
-  parentPort,
-  workerData,
 } from "worker_threads";
 
 import { SpaceProxy } from "./SpaceProxy";
@@ -14,7 +11,7 @@ export type { SpaceProxy } from "./SpaceProxy";
 
 export function createServerSpace() {
   //
-  const worker = new Worker(__filename, {});
+  const worker = new Worker(__filename);
 
   return new SpaceProxy(worker);
 }

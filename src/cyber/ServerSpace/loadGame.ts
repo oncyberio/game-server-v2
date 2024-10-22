@@ -34,17 +34,9 @@ const loader = new GameLoader();
 
 export async function loadGame(gameData, opts: Partial<LoadGameOptions> = {}) {
   //
-  console.log(
-    "Loading game space",
-    gameData.id,
-    Object.keys(gameData.components)
-  );
-
   opts = Object.assign({}, defOptions, opts);
 
   const result = await loader.loadGameData(gameData, opts);
-
-  console.log("Game space created");
 
   return result;
 }

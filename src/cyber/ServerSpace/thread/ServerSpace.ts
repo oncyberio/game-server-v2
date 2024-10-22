@@ -136,6 +136,12 @@ export class ServerSpace {
 
     this.serverApi = new ServerApi();
 
+    const secrets = gameData.components.multiplayer?.secrets;
+
+    secrets?.forEach((secret) => {
+      process.env[secret.key] = secret.value;
+    });
+
     const serverScripts = this.getServerScripts(gameData);
 
     const res = await loadGame(gameData, {
