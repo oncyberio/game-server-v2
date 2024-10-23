@@ -1,5 +1,5 @@
-// const BASE_URL = "https://oo-git-dev-oncyber.vercel.app";
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "https://oo-git-dev-oncyber.vercel.app";
+// const BASE_URL = "http://localhost:3000";
 const GAME_API_URL = `${BASE_URL}/api/games`;
 
 const GAME_SERVER_KEY = process.env.GAME_SERVER_KEY;
