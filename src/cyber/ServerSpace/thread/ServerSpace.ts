@@ -115,7 +115,11 @@ export class ServerSpace {
     serverScripts: Record<string, boolean>
   ) {
     //
-    if (component.type === "prefab" || component.type === "script") {
+    if (
+      component.type === "prefab" ||
+      component.type === "model" ||
+      component.type === "script"
+    ) {
       return true;
     }
 

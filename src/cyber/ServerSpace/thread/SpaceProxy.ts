@@ -172,7 +172,9 @@ export class SpaceProxy {
     //
     const state = this.session.state;
     Object.keys(players).forEach((sessionId) => {
-      state.players[sessionId].update(players[sessionId]);
+      let player = state.players[sessionId];
+      if (player == null) return;
+      player.update(players[sessionId]);
     });
   }
 
