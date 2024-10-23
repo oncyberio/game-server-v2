@@ -373,7 +373,7 @@ export abstract class GameSession<
 
       console.log("Sending sync request", this.gameId);
 
-      await this.spaceProxy.sync({
+      await this.spaceProxy?.sync({
         state: this.state.toJSON(),
         params: {
           authoritativePosition: this.authoritativePosition,
