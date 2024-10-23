@@ -112,6 +112,8 @@ export abstract class GameSession<
 
   spaceProxy: SpaceProxy = null;
 
+  spawn: any = null;
+
   constructor(public ctx: GameRoomCtx) {
     //
     this.ctx.onMsg(CYBER_MSG, this._CALLBACKS_.cyberMsg);
@@ -317,6 +319,8 @@ export abstract class GameSession<
   _CALLBACKS_ = {
     create: async () => {
       //
+      this.spawn = this.gameData.components["spawn"];
+
       const mulitplayer = this.gameData.components["multiplayer"] ?? {};
 
       let settings = Object.assign({}, defaults, mulitplayer);
@@ -391,6 +395,13 @@ export abstract class GameSession<
       const playerData = this.getPlayerData(params);
       this.validateJoin(playerData);
       this._emitter.emit(EVENTS.join, playerData);
+      //
+      if (this.authoritativePosition && this.spawn) {
+        //
+        playerData.position = structuredClone(this.spawn.position);
+        playerData.rotation = structuredClone(this.spawn.rotation);
+      }
+      //
       const player = this.state.addPlayer(playerData);
       await Promise.resolve(this.onJoin(player));
       this.spaceProxy?.onJoin(player);
