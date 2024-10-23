@@ -103,7 +103,7 @@ export class ServerSpace {
 
     Object.values(gameData.components).forEach((c: any) => {
       //
-      if (c.type.startsWith("script")) {
+      if (c.type?.startsWith("script")) {
         serverScripts[c.id] = USE_SERVER_REGEX.test(c.emit?.code);
       }
     });
@@ -119,7 +119,7 @@ export class ServerSpace {
       return true;
     }
 
-    if (component.type.startsWith("script")) {
+    if (component.type?.startsWith("script")) {
       return serverScripts[component.type];
     }
 
