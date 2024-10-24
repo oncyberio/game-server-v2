@@ -81,7 +81,7 @@ export class SpaceProxy {
     this.on(SpaceEvents.ERROR, (err) => {
       //
       console.error("Space err, terminating session");
-      this.session.ctx.disconnect();
+      // this.session.ctx.disconnect();
     });
 
     const res = await this.call(RoomEvents.LOAD_SPACE, {

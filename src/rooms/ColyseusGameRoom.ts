@@ -293,3 +293,7 @@ export class ColyseusGameRoom extends Room {
     this._roomHandler?._CALLBACKS_.shutdown();
   }
 }
+
+process.on("exit", (code) => {
+  console.log(`About to exit with code: ${code}`);
+});
