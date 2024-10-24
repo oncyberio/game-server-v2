@@ -225,12 +225,6 @@ export class ServerSpace {
     });
 
     await p.avatarReady;
-
-    console.log(
-      "Remote Avatar created",
-      // avatar.behaviors.map((b) => b.name),
-      p.avatar.getDimensions()
-    );
   }
 
   _netstateCache = new WeakMap<{ version: number; state: any }>();

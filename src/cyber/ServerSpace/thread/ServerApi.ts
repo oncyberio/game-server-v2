@@ -24,8 +24,6 @@ export class ServerApi {
 
     Room.on(RoomEvents.SYNC, (config: { params: RoomParams; state: any }) => {
       //
-      console.log("SYNC", config);
-
       this._state = config.state;
       this._state.players = {};
       this._roomParams = config.params;
@@ -35,22 +33,16 @@ export class ServerApi {
 
     Room.on(RoomEvents.MESSAGE, (payload: any) => {
       //
-      console.log("MESSAGE", payload);
-
       this._emitter.emit(payload.type, payload.message, payload.playerId);
     });
 
     Room.on(RoomEvents.JOIN, (player: PlayerData) => {
       //
-      console.log("JOIN", player);
-
       this._state.players[player.sessionId] = player;
     });
 
     Room.on(RoomEvents.LEAVE, (player: PlayerData) => {
       //
-      console.log("LEAVE", player);
-
       delete this._state.players[player.sessionId];
     });
 

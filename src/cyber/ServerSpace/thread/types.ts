@@ -7,6 +7,7 @@ export const SpaceEvents = {
   LOADED: "LOADED",
   ENTITY_STATE: "ENTITY_STATE",
   READY: "READY",
+  ERROR: "ERROR",
 } as const;
 
 export const RoomEvents = {

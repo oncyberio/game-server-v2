@@ -63,6 +63,7 @@ export interface GameRoomCtx {
   disconnectPlayer: (sessionId: string) => void;
   nbConnected: number;
   setState: (state: any) => void;
+  disconnect: () => void;
 }
 
 export const EVENTS = {
@@ -375,8 +376,6 @@ export abstract class GameSession<
       this.state.settings.tickRate = tickRate;
       this.state.settings.patchRate = patchRate;
 
-      console.log("Sending sync request", this.gameId);
-
       await this.spaceProxy?.sync({
         state: this.state.toJSON(),
         params: {
@@ -462,20 +461,8 @@ export abstract class GameSession<
     beforePatch: async () => {
       //
       await this.spaceProxy?.onBeforePatch(this.state.toJSON());
-
-      // if (this.state["$changes"].changes.size > 0) {
-      //   console.log("beforePatch", this.state["$changes"].changes.size);
-      // }
-
       this.state.snapshotId = Math.random().toString(36).substring(2, 7);
       this.state.timestamp = Date.now();
-
-      // this.onBeforePatch();
-      // console.log(
-      //   "beforePatch",
-      //   this.state.timestamp - this._CALLBACKS_.prevTimestamp
-      // );
-      // this._CALLBACKS_.prevTimestamp = this.state.timestamp;
     },
 
     cyberMsg: (message: ClientMessage<any>, sessionId: string) => {
@@ -489,7 +476,6 @@ export abstract class GameSession<
           //
           const reply = message.msgId
             ? (data) => {
-                // console.log("replying", message, data);
                 this.ctx.sendMsg(
                   CYBER_MSG,
                   {

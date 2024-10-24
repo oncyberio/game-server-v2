@@ -51,14 +51,16 @@ export class Room {
         Room._emitter.emit(message.type, message.message, resolve, reject);
       });
 
-      parentPort.on("error", (err) => {
-        //
-        console.error("worker error", err);
+      // Handle uncaught errors in the worker
+      process.on("uncaughtException", (error) => {
+        console.error("Uncaught Exception in worker:", error);
+        this.postMessage(SpaceEvents.ERROR, error);
       });
 
-      parentPort.on("exit", (code) => {
-        //
-        console.log("worker exit", code);
+      // Handle unhandled promise rejections in the worker
+      process.on("unhandledRejection", (reason, promise) => {
+        console.error("Unhandled Rejection in worker:", reason);
+        this.postMessage(SpaceEvents.ERROR, reason);
       });
     }
   }
