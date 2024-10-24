@@ -8,8 +8,6 @@ import { RoomEvents, SpaceEvents } from "./types";
 // @ts-ignore
 import { Web3Api, LocalProvider } from "@oogg/server-engine";
 
-const USE_SERVER_REGEX = /^\s*"use server"/;
-
 export interface ServerSpaceParams {
   gameData: any;
   debugPhysics?: boolean;
@@ -98,37 +96,18 @@ export class ServerSpace {
     });
   }
 
-  private getServerScripts(gameData: any) {
-    const serverScripts = {};
-
-    Object.values(gameData.components).forEach((c: any) => {
-      //
-      if (c.type?.startsWith("script")) {
-        serverScripts[c.id] = USE_SERVER_REGEX.test(c.emit?.code);
-      }
-    });
-    return serverScripts;
-  }
-
-  private canLoadComponent(
-    component: any,
-    serverScripts: Record<string, boolean>
-  ) {
-    //
-    if (
-      component.type === "prefab" ||
-      component.type === "model" ||
-      component.type === "script"
-    ) {
-      return true;
-    }
-
-    if (component.type?.startsWith("script")) {
-      return serverScripts[component.type];
-    }
-
+  private canLoadComponent(component: any) {
+    // this is a little hacky, should be moved to the engine
+    // But since this still can change often, keeping it here
+    // so that we can make quick changes
     return (
+      component.type === "prefab" ||
+      component.type === "script" ||
+      component.type === "model" ||
       component.type === "group" ||
+      // This will be handled by the engine by checking
+      // either (deprecate) "use server" or config.server == true
+      component.type?.startsWith("script") ||
       component.collider?.enabled ||
       component.type === "spawn"
     );
@@ -145,8 +124,6 @@ export class ServerSpace {
     secrets?.forEach((secret) => {
       process.env[secret.key] = secret.value;
     });
-
-    const serverScripts = this.getServerScripts(gameData);
 
     const res = await loadGame(gameData, {
       debugPhysics: opts.debugPhysics ?? true,
@@ -165,7 +142,7 @@ export class ServerSpace {
       isDraft: opts.isDraft ?? true,
       filter: (component: any) => {
         // console.log("Component", component.id, component.name);
-        return this.canLoadComponent(component, serverScripts);
+        return this.canLoadComponent(component);
       },
     });
 
