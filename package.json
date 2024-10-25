@@ -9,10 +9,10 @@
   },
   "scripts": {
     "start": "tsx watch src/index.ts",
-    "start-ssl": "NODE_ENV=production tsx watch src/index.ts",
+    "start-ssl": "SSL=true tsx watch src/index.ts",
     "loadtest": "tsx loadtest/example.ts --room my_room --numClients 2",
     "build": "npm run clean && tsc",
-    "run-prod": "NODE_ENV=production node build/index.js",
+    "run-prod": "SSL=true node build/index.js",
     "clean": "rimraf build",
     "test": "mocha -r tsx test/**_test.ts --exit --timeout 15000"
   },

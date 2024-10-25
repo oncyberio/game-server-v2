@@ -9,7 +9,9 @@ import path from "path";
 import { rooms } from "./rooms";
 import { initializeExpress } from "./express";
 
-const PORT = process.env.NODE_ENV !== "production" ? 2567 : 443;
+const SSL = process.env.SSL == "true";
+
+const PORT = SSL ? 443 : 2567;
 
 const app = express();
 
@@ -18,9 +20,7 @@ app.use(express.json());
 initializeExpress(app);
 
 function getServer() {
-  console.error("NODE_ENV", process.env.NODE_ENV);
-
-  if (process.env.NODE_ENV !== "production") {
+  if (!SSL) {
     return createServer(app);
   } else {
     // Certificate
@@ -59,7 +59,7 @@ Object.keys(rooms).forEach((key) => {
 
 export function listen() {
   gameServer.listen(PORT).then(() => {
-    console.log("Node environment", process.env.NODE_ENV);
+    console.log("SSL", process.env.SSL);
     console.log(`Listening on http://localhost:${PORT}`);
   });
 }
