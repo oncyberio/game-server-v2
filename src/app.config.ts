@@ -9,10 +9,7 @@ import path from "path";
 import { rooms } from "./rooms";
 import { initializeExpress } from "./express";
 
-const PORT =
-  process.env.NODE_ENV !== "production"
-    ? 2567
-    : Number(process.env.PORT) + Number(process.env.NODE_APP_INSTANCE);
+const PORT = process.env.NODE_ENV !== "production" ? 2567 : 443;
 
 const app = express();
 
@@ -21,6 +18,8 @@ app.use(express.json());
 initializeExpress(app);
 
 function getServer() {
+  console.error("NODE_ENV", process.env.NODE_ENV);
+
   if (process.env.NODE_ENV !== "production") {
     return createServer(app);
   } else {
@@ -60,6 +59,7 @@ Object.keys(rooms).forEach((key) => {
 
 export function listen() {
   gameServer.listen(PORT).then(() => {
+    console.log("Node environment", process.env.NODE_ENV);
     console.log(`Listening on http://localhost:${PORT}`);
   });
 }
