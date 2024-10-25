@@ -25,15 +25,15 @@ function getServer() {
   } else {
     // Certificate
     const privateKey = fs.readFileSync(
-      path.resolve(__dirname, "../certs/privkey.pem"),
+      path.resolve(__dirname, "./certs/privkey.pem"),
       "utf8"
     );
     const certificate = fs.readFileSync(
-      path.resolve(__dirname, "../certs/cert.pem"),
+      path.resolve(__dirname, "./certs/cert.pem"),
       "utf8"
     );
     const ca = fs.readFileSync(
-      path.resolve(__dirname, "../certs/chain.pem"),
+      path.resolve(__dirname, "./certs/chain.pem"),
       "utf8"
     );
 
