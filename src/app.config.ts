@@ -25,15 +25,15 @@ function getServer() {
   } else {
     // Certificate
     const privateKey = fs.readFileSync(
-      "/home/y/game-server-v2/certs/privkey.pem",
+      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/privkey.pem",
       "utf8"
     );
     const certificate = fs.readFileSync(
-      "/home/y/game-server-v2/certs/cert.pem",
+      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/cert.pem",
       "utf8"
     );
     const ca = fs.readFileSync(
-      "/home/y/game-server-v2/certs/chain.pem",
+      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/chain.pem",
       "utf8"
     );
 
