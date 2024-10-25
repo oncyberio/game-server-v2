@@ -130,3 +130,5 @@ dist
 .env.*
 
 build/
+certs
+challenge

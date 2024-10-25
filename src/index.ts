@@ -8,10 +8,12 @@
  *
  * See: https://docs.colyseus.io/server/api/#constructor-options
  */
-import { listen } from "@colyseus/tools";
+// import { listen } from "@colyseus/tools";
 
 // Import Colyseus config
-import app from "./app.config";
+import { listen } from "./app.config";
+
+listen();
 
 // Create and listen on 2567 (or PORT environment variable.)
-listen(app);
+// listen(app);
