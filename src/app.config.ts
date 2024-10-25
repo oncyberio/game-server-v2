@@ -26,15 +26,15 @@ function getServer() {
   } else {
     // Certificate
     const privateKey = fs.readFileSync(
-      "/etc/letsencrypt/live/mmo3.oncyber.io/privkey.pem",
+      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/privkey.pem",
       "utf8"
     );
     const certificate = fs.readFileSync(
-      "/etc/letsencrypt/live/mmo3.oncyber.io/cert.pem",
+      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/cert.pem",
       "utf8"
     );
     const ca = fs.readFileSync(
-      "/etc/letsencrypt/live/mmo3.oncyber.io/chain.pem",
+      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/chain.pem",
       "utf8"
     );
 
