@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "outDir": "build",
-    "target": "ES6",
+    "target": "ES2018",
     "module": "CommonJS",
     "moduleResolution": "node",
     "strict": false,
