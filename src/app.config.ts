@@ -24,18 +24,9 @@ function getServer() {
     return createServer(app);
   } else {
     // Certificate
-    const privateKey = fs.readFileSync(
-      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/privkey.pem",
-      "utf8"
-    );
-    const certificate = fs.readFileSync(
-      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/cert.pem",
-      "utf8"
-    );
-    const ca = fs.readFileSync(
-      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/chain.pem",
-      "utf8"
-    );
+    const privateKey = fs.readFileSync("certs/privkey.pem", "utf8");
+    const certificate = fs.readFileSync("certs/cert.pem", "utf8");
+    const ca = fs.readFileSync("certs/chain.pem", "utf8");
 
     const credentials = {
       key: privateKey,
