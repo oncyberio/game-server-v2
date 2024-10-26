@@ -165,16 +165,9 @@ export class ColyseusGameRoom extends Room {
     }
   }
 
-  // @ts-ignore
-  async broadcastPatch() {
+  onBeforePatch() {
     //
-    // const now = Date.now();
-    await this._roomHandler?._CALLBACKS_.beforePatch();
-    // this.log("Patch time", Date.now() - now);
-
-    if (this._disposed) return;
-
-    return super.broadcastPatch();
+    this._roomHandler?._CALLBACKS_.beforePatch();
   }
 
   async onJoin(client: Client, options: any, auth: any) {

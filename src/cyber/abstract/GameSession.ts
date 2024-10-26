@@ -16,7 +16,7 @@ import {
 import { RoomState } from "../schema/RoomState";
 import { calcLatencyIPDTV } from "./utils";
 import { PlayerState } from "../schema/PlayerState";
-import { type SpaceProxy, createServerSpace } from "../ServerSpace/thread";
+import { SpaceProxy } from "../ServerSpace/thread/SpaceProxy";
 
 const defaults = {
   autoStart: false,
@@ -150,17 +150,13 @@ export abstract class GameSession<
   }
 
   startGame(countdownSecs: number) {
-    //
     console.log("Starting game in", countdownSecs, "seconds");
-
     const countdownMillis = countdownSecs * 1000;
 
     // notift all players after countdown, take into account player's latency
     this.state.players.forEach((player) => {
       const latency = player.latency ?? 0;
-
       const delay = Math.max(0, countdownMillis - latency);
-
       this.ctx.sendMsg(
         CYBER_MSG,
         {
@@ -353,7 +349,7 @@ export abstract class GameSession<
 
       if (this.serverEngine.enabled) {
         //
-        this.spaceProxy = createServerSpace();
+        this.spaceProxy = new SpaceProxy();
 
         // We must run the server space, so that the space scripts
         // can attach their schemas to the room state
@@ -458,9 +454,9 @@ export abstract class GameSession<
 
     prevTimestamp: Date.now(),
 
-    beforePatch: async () => {
+    beforePatch: () => {
       //
-      await this.spaceProxy?.onBeforePatch(this.state.toJSON());
+      this.spaceProxy?.onBeforePatch();
       this.state.snapshotId = Math.random().toString(36).substring(2, 7);
       this.state.timestamp = Date.now();
     },

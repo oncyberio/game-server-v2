@@ -1,63 +1,15 @@
-import { EventEmitter } from "events";
-import type { Worker } from "worker_threads";
-import { RoomEvent, RoomEvents, SpaceEvent, SpaceEvents } from "./types";
 import { GameSession } from "../../abstract/GameSession";
 import { PlayerData } from "../../abstract/types";
+import { ServerSpace } from "./ServerSpace";
+import { ServerHandler } from "./ServerApi";
 
 export class SpaceProxy {
   //
-
   private session: GameSession;
 
-  private _emitter = new EventEmitter();
+  private serverSpace = new ServerSpace();
 
-  constructor(public port: Worker) {
-    //
-    port.on("message", (message: any) => {
-      this._emitter.emit(message.type, message.message);
-    });
-  }
-
-  postMessage(type: RoomEvent, message: any, msgId?: string) {
-    //
-    this.port.postMessage({ type, message, msgId });
-  }
-
-  on(type: SpaceEvent, cb: (message: any) => void): () => void {
-    //
-    this._emitter.on(type, cb);
-
-    return () => {
-      this._emitter.off(type, cb);
-    };
-  }
-
-  once(type: SpaceEvent, cb: (message: any) => void): () => void {
-    //
-    this._emitter.once(type, cb);
-
-    return () => {
-      this._emitter.off(type, cb);
-    };
-  }
-
-  call(type: RoomEvent, message: any): Promise<any> {
-    //
-    return new Promise((resolve, reject) => {
-      //
-      const msgId = Math.random().toString();
-
-      this._emitter.once(msgId, (message: any) => {
-        if (message.success) {
-          resolve(message.value);
-        } else {
-          reject(new Error(message.error));
-        }
-      });
-
-      this.postMessage(type, message, msgId);
-    });
-  }
+  constructor() {}
 
   _nbLogs = 0;
 
@@ -78,31 +30,28 @@ export class SpaceProxy {
     //
     this.session = opts.session;
 
-    this.on(SpaceEvents.ERROR, (err) => {
-      //
-      console.error("Space err, terminating session");
-      // this.session.ctx.disconnect();
-    });
+    const serverHandler: ServerHandler = {
+      broadcast: (type, message, exclude) => {
+        this.session.ctx.broadcastMsg(type, message, { except: exclude });
+      },
+      disconnectPlayer: (playerId) => {
+        this.session.ctx.disconnectPlayer(playerId);
+      },
+      send: (type, message, playerId) => {
+        this.session.ctx.sendMsg(type, message, playerId);
+      },
+    };
 
-    const res = await this.call(RoomEvents.LOAD_SPACE, {
+    const res = await this.serverSpace.init({
       gameData: this.session.gameData,
       debugPhysics: opts.debugPhysics,
       isDraft: opts.isDraft,
+      serverHandler,
     });
 
     this._registerEntities(res.entities);
 
     this._initRpc();
-
-    this.on(SpaceEvents.SEND, ({ type, data, sessionId }) => {
-      //
-      this.session.ctx.sendMsg(type, data, sessionId);
-    });
-
-    this.on(SpaceEvents.BROADCAST, ({ type, data, exclude }) => {
-      //
-      this.session.ctx.broadcastMsg(type, data, { except: exclude });
-    });
   }
 
   private _initRpc() {
@@ -111,10 +60,18 @@ export class SpaceProxy {
       //
       try {
         //
-        let value = await this.call(RoomEvents.RPC_REQUEST, {
-          request,
-          sessionId,
-        });
+        let value = await this.serverSpace.handleRpcRequest(
+          {
+            request,
+            sessionId,
+          },
+          (value) => {
+            reply({ value });
+          },
+          (error) => {
+            reply({ error });
+          }
+        );
 
         reply({ value });
         //
@@ -140,36 +97,32 @@ export class SpaceProxy {
 
   async sync({ state, params }) {
     //
-    this.postMessage(RoomEvents.SYNC, { state, params });
-
-    return new Promise<void>((resolve) => {
-      this.once(SpaceEvents.READY, resolve);
-    });
+    this.serverSpace.serverApi._roomSync({ state, params });
   }
 
   startGame() {
     //
-    this.postMessage(RoomEvents.START_GAME, null);
+    this.serverSpace.startGame();
   }
 
   stopGame() {
     //
-    this.postMessage(RoomEvents.STOP_GAME, null);
+    this.serverSpace.stopGame();
   }
 
   onJoin(player: PlayerData) {
     //
-    this.postMessage(RoomEvents.JOIN, player);
+    this.serverSpace.onJoin(player);
   }
 
   onLeave(player: PlayerData) {
     //
-    this.postMessage(RoomEvents.LEAVE, player);
+    this.serverSpace.onLeave(player);
   }
 
-  async onBeforePatch(state) {
+  onBeforePatch() {
     //
-    const res = await this.call(RoomEvents.BEFORE_PATCH, state);
+    const res = this.serverSpace.onBeforePatch();
     this._patchEntities(res.entities);
     this._patchPlayers(res.players);
   }
@@ -189,9 +142,7 @@ export class SpaceProxy {
     const state = this.session.state;
 
     Object.keys(entities).forEach((entity) => {
-      //
       const isVersioned = this._versionedEntities[entity];
-
       const es = entities[entity];
       es.forEach((e) => {
         if (isVersioned) {
@@ -204,17 +155,16 @@ export class SpaceProxy {
 
   onPlayerState(player: PlayerData) {
     //
-    this.postMessage(RoomEvents.PLAYER_STATE, player);
+    this.serverSpace.serverApi._roomPlayerState(player);
   }
 
   onMessage(type, message, playerId) {
     //
-    this.postMessage(RoomEvents.MESSAGE, { type, message, playerId });
+    this.serverSpace.serverApi._roomMsg({ type, message, playerId });
   }
 
   dispose() {
     //
-    console.log("terminating process");
-    this.port.terminate();
+    this.serverSpace.dispose();
   }
 }

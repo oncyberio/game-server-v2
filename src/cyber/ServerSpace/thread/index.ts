@@ -13,7 +13,7 @@ export function createServerSpace() {
   //
   const worker = new Worker(__filename);
 
-  return new SpaceProxy(worker);
+  return new SpaceProxy();
 }
 
 if (!isMainThread) {

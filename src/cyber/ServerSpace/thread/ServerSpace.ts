@@ -1,22 +1,22 @@
+import { EventEmitter } from "events";
 import type { RoomState } from "../../schema/RoomState";
 import type { PlayerState } from "../../schema/PlayerState";
 import * as ethers from "ethers";
 import { exitGame, loadGame } from "../loadGame";
-import { ServerApi } from "./ServerApi";
-import { Callback, Room } from "./RoomProxy";
-import { RoomEvents, SpaceEvents } from "./types";
+import { ServerApi, ServerHandler } from "./ServerApi";
 // @ts-ignore
 import { Web3Api, LocalProvider } from "@oogg/server-engine";
+import { PlayerData } from "../../abstract/types";
 
 export interface ServerSpaceParams {
   gameData: any;
   debugPhysics?: boolean;
   isDraft?: boolean;
+  serverHandler: ServerHandler;
 }
 
 export class ServerSpace {
   //
-
   engine = null;
   playerManager = null;
   space = null;
@@ -37,64 +37,7 @@ export class ServerSpace {
     globalThis.$$serverSpace = new ServerSpace();
   }
 
-  constructor() {
-    //
-    Room.once(
-      RoomEvents.LOAD_SPACE,
-      async (
-        config: ServerSpaceParams,
-        resolve: Callback,
-        reject: Callback
-      ) => {
-        //
-        try {
-          await this.init(config);
-          resolve({
-            entities: this.serverApi._entitiesSchema,
-          });
-        } catch (err) {
-          console.error("Error loading space", err);
-          reject(err.message);
-        }
-      }
-    );
-
-    Room.on(RoomEvents.START_GAME, () => {
-      //
-      this.startGame();
-    });
-
-    Room.on(RoomEvents.STOP_GAME, () => {
-      //
-      this.stopGame();
-    });
-
-    Room.on(RoomEvents.JOIN, (player: PlayerState) => {
-      //
-      this.onJoin(player);
-    });
-
-    Room.on(RoomEvents.LEAVE, (player: PlayerState) => {
-      //
-      this.onLeave(player);
-    });
-
-    Room.on(RoomEvents.BEFORE_PATCH, (_, resolve, reject) => {
-      //
-      try {
-        const state = this.onBeforePatch();
-        resolve(state);
-      } catch (err) {
-        //
-        reject(err.message);
-      }
-    });
-
-    Room.on(RoomEvents.DISPOSE, () => {
-      //
-      this.dispose();
-    });
-  }
+  constructor() {}
 
   private canLoadComponent(component: any) {
     // this is a little hacky, should be moved to the engine
@@ -117,7 +60,7 @@ export class ServerSpace {
     //
     const { gameData } = opts;
 
-    this.serverApi = new ServerApi();
+    this.serverApi = new ServerApi(opts.serverHandler);
 
     const secrets = gameData.components.multiplayer?.secrets;
 
@@ -152,10 +95,15 @@ export class ServerSpace {
 
     this.space = this.engine.getCurrentSpace();
 
+    console.log("Space loaded");
+
     // this.coins = coins;
     this.space.physics.active = true;
+
     this.space.physics.update(1 / 60);
+
     this.time = Date.now() / 1000;
+
     this.iv = setInterval(() => {
       const now = Date.now() / 1000;
       let dt = now - this.time;
@@ -163,42 +111,43 @@ export class ServerSpace {
       this.update(dt);
     }, 1000 / 60);
 
-    Room.on(
-      RoomEvents.RPC_REQUEST,
-      async ({ request, sessionId }, resolve, reject) => {
-        //
-        try {
-          const { id, method, args } = request;
+    return {
+      entities: this.serverApi._entitiesSchema,
+    };
+  }
 
-          const instance = this._getRpcRecipient(id);
+  async handleRpcRequest({ request, sessionId }, resolve, reject) {
+    //
+    try {
+      const { id, method, args } = request;
 
-          if (instance == null) {
-            throw new Error("Instance not found " + id);
-          }
+      console.log("RPC", id, method, args);
+      const instance = this._getRpcRecipient(id);
 
-          if (typeof instance.$$dispatchRpc !== "function") {
-            throw new Error("Rpc method not found");
-          }
-          const value = await instance.$$dispatchRpc(
-            method,
-            args.concat(sessionId)
-          );
-
-          resolve(value);
-
-          //
-        } catch (err) {
-          //
-          // console.error("Error", err);
-          reject(err.message);
-        }
+      if (instance == null) {
+        throw new Error("Instance not found " + id);
       }
-    );
+
+      if (typeof instance.$$dispatchRpc !== "function") {
+        throw new Error("Rpc method not found");
+      }
+      const value = await instance.$$dispatchRpc(
+        method,
+        args.concat(sessionId)
+      );
+
+      resolve(value);
+      //
+    } catch (err) {
+      // console.error("Error", err);
+      reject(err.message);
+    }
   }
 
   private _getRpcRecipient(rpcId: string) {
     //
     return this.space.components.find((c) => {
+      console.log("checking", c._rpcId, rpcId);
       return c._rpcId === rpcId;
     });
   }
@@ -213,7 +162,7 @@ export class ServerSpace {
     this.space.stop();
   }
 
-  async onJoin(player: PlayerState) {
+  async onJoin(player: PlayerData) {
     //
     if (this.space == null) {
       console.error("Space not loaded!");
@@ -223,6 +172,8 @@ export class ServerSpace {
     const p = this.playerManager.addPlayer(player, {
       collision: true,
     });
+
+    this.serverApi._roomJoin(player);
 
     await p.avatarReady;
   }
@@ -281,9 +232,11 @@ export class ServerSpace {
     return state;
   }
 
-  onLeave(player: PlayerState) {
+  onLeave(player: PlayerData) {
     //
     this.playerManager.removePlayer(player.sessionId);
+
+    this.serverApi._roomLeave(player);
   }
 
   private _accumulatedTime = 0;
