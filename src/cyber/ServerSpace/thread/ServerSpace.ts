@@ -84,7 +84,6 @@ export class ServerSpace {
       },
       isDraft: opts.isDraft ?? true,
       filter: (component: any) => {
-        // console.log("Component", component.id, component.name);
         return this.canLoadComponent(component);
       },
     });
@@ -121,7 +120,6 @@ export class ServerSpace {
     try {
       const { id, method, args } = request;
 
-      console.log("RPC", id, method, args);
       const instance = this._getRpcRecipient(id);
 
       if (instance == null) {
@@ -147,7 +145,6 @@ export class ServerSpace {
   private _getRpcRecipient(rpcId: string) {
     //
     return this.space.components.find((c) => {
-      console.log("checking", c._rpcId, rpcId);
       return c._rpcId === rpcId;
     });
   }
