@@ -123,7 +123,8 @@ export class SpaceProxy {
   onBeforePatch() {
     //
     const res = this.serverSpace.onBeforePatch();
-    this.session.state.maxFrame = +this.serverSpace.maxFrame.toFixed(3);
+    this.session.state.maxFrame = +this.serverSpace.maxFrame.toFixed(4);
+    this.session.state.avgFrame = +this.serverSpace.avgFrame.toFixed(4);
     this._patchEntities(res.entities);
     this._patchPlayers(res.players);
   }
