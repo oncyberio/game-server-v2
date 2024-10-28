@@ -33,6 +33,7 @@ export class ServerSpace {
   time = 0;
 
   maxFrame = 0;
+  avgFrame = 0;
 
   static create() {
     //
@@ -111,6 +112,7 @@ export class ServerSpace {
       this.time = now;
       this.update(dt);
       this.maxFrame = Math.max(Date.now() / 1000 - now, this.maxFrame);
+      this.avgFrame = (this.avgFrame + dt) / 2;
     }, 1000 / 60);
 
     return {
