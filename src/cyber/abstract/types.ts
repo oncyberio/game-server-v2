@@ -129,7 +129,7 @@ export interface SendDMMsg {
 }
 
 export interface PongMsg {
-  type: Messages.PING;
+  type: Messages.PONG;
   data: number;
 }
 

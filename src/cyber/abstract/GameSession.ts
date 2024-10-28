@@ -401,7 +401,7 @@ export abstract class GameSession<
       await Promise.resolve(this.onJoin(player));
       this.spaceProxy?.onJoin(player);
       // send ping to client to measure latency
-      // this._PING_._pingLoop(playerData.sessionId);
+      this._PING_._pingLoop(playerData.sessionId);
       console.log("player joined", playerData.sessionId);
     },
 
@@ -435,7 +435,7 @@ export abstract class GameSession<
 
       console.log("player left", sessionId);
 
-      // this._PING_._clearPingLoop(sessionId);
+      this._PING_._clearPingLoop(sessionId);
 
       this.state.removePlayer(sessionId);
 
@@ -489,9 +489,9 @@ export abstract class GameSession<
             handler(message.data, reply, sessionId);
           });
         }
-      } else if (message.type === Messages.PING) {
+      } else if (message.type === Messages.PONG) {
         //
-        // this._PING_._onPong(message, sessionId);
+        this._PING_._onPong(message, sessionId);
         //
       } else {
         //
