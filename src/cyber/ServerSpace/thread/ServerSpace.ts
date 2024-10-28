@@ -32,6 +32,8 @@ export class ServerSpace {
   iv = null;
   time = 0;
 
+  maxFrame = 0;
+
   static create() {
     //
     globalThis.$$serverSpace = new ServerSpace();
@@ -108,6 +110,7 @@ export class ServerSpace {
       let dt = now - this.time;
       this.time = now;
       this.update(dt);
+      this.maxFrame = Math.max(Date.now() / 1000 - now, this.maxFrame);
     }, 1000 / 60);
 
     return {
