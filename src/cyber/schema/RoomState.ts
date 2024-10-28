@@ -54,12 +54,58 @@ export class RoomSettings extends Schema {
   @type("number") tickRate = 20;
 }
 
+export class Stats extends Schema {
+  @type("number") maxFrame = 0;
+  @type("number") avgFrame = 0;
+
+  // Resident Set Size - total memory allocated for the process execution
+  @type("string") memRss = "";
+
+  // Heap Total - total size of the allocated heap
+  @type("string") memHeapTotal = "";
+
+  // Heap Used - actual memory used during the execution
+  @type("string") memHeapUsed = "";
+
+  // External - memory used by C++ objects bound to JavaScript objects
+  @type("string") memExternal = "";
+
+  // Array Buffers
+  @type("string") memArrayBuffers = "";
+
+  private _ivl: NodeJS.Timeout;
+
+  start() {
+    //
+    this._ivl = setInterval(() => {
+      this.getMemoryUsage();
+    }, 5000);
+  }
+
+  stop() {
+    //
+    clearInterval(this._ivl);
+  }
+
+  private formatMemoryUsage(bytes) {
+    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+  }
+
+  private getMemoryUsage() {
+    const memory = process.memoryUsage();
+    this.memRss = this.formatMemoryUsage(memory.rss);
+    this.memHeapTotal = this.formatMemoryUsage(memory.heapTotal);
+    this.memHeapUsed = this.formatMemoryUsage(memory.heapUsed);
+    this.memExternal = this.formatMemoryUsage(memory.external);
+    this.memArrayBuffers = this.formatMemoryUsage(memory.arrayBuffers || 0);
+  }
+}
+
 export class RoomState extends ExtensibleSchema {
   //
   @type("string") snapshotId: string = null;
   @type("number") timestamp: number = 0;
-  @type("number") maxFrame: number = 0;
-  @type("number") avgFrame: number = 0;
+  @type(Stats) stats = new Stats();
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
   @type(RoomSettings) settings = new RoomSettings();
 

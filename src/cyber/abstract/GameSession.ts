@@ -382,6 +382,8 @@ export abstract class GameSession<
         },
       });
 
+      this.state.stats.start();
+
       console.log("Room created", this.gameId);
     },
 
@@ -557,6 +559,8 @@ export abstract class GameSession<
 
     shutdown: () => {
       //
+      this._PING_._clearAllPingLoops();
+      this.state.stats.stop();
       this._gameLoop.stop();
       this.spaceProxy?.dispose();
       this.onDispose();
