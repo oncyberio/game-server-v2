@@ -20,6 +20,7 @@ export class ServerSpace {
   engine = null;
   playerManager = null;
   space = null;
+  spawn: any = null;
   // avatar = null;
   // coins = null;
   // coinModel = null;
@@ -62,6 +63,8 @@ export class ServerSpace {
   async init(opts: ServerSpaceParams) {
     //
     const { gameData } = opts;
+
+    this.spawn = gameData.components["spawn"];
 
     this.serverApi = new ServerApi(opts.serverHandler);
 
@@ -242,6 +245,30 @@ export class ServerSpace {
     this.serverApi._roomLeave(player);
   }
 
+  onPlayerState(data: PlayerData) {
+    //
+    const player = this.playerManager.get(data.sessionId);
+
+    if (this.spawn.useUserAvatar && player.avatar) {
+      if (data.vrmUrl && data.vrmUrl !== player.avatar.vrmUrl) {
+        // console.log(
+        //   "Update VRM",
+        //   data.sessionId,
+        //   data.vrmUrl,
+        //   player.avatar.collider.raw.radius()
+        // );
+        player.avatar.updateVRM(data.vrmUrl).then(() => {
+          // TODO, move to engine
+          const dims = player.avatar.getDimensions();
+          player.avatar.rigidBody?._updateColliders(dims);
+          // console.log("VRM Updated", player.avatar.collider.raw.radius());
+        });
+      }
+    }
+
+    this.serverApi._roomPlayerState(data);
+  }
+
   private _accumulatedTime = 0;
 
   update(dt: number) {
@@ -262,6 +289,12 @@ export class ServerSpace {
 
       now += this.dt;
     }
+
+    this.engine.notify(
+      this.engine.Events.JUST_AFTER_PHYSICS_UPDATE,
+      this.dt,
+      now
+    );
   }
 
   dispose() {

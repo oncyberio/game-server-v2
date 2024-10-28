@@ -155,9 +155,9 @@ export class SpaceProxy {
     });
   }
 
-  onPlayerState(player: PlayerData) {
+  onPlayerState(data: PlayerData) {
     //
-    this.serverSpace.serverApi._roomPlayerState(player);
+    this.serverSpace.onPlayerState(data);
   }
 
   onMessage(type, message, playerId) {
