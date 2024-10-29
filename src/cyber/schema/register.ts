@@ -92,6 +92,11 @@ export class ExtMapSchema extends MapSchema {
       Object.keys(val).forEach((id) => {
         this.$set(id, val[id]);
       });
+      this.forEach((_, id) => {
+        if (val[id] == null) {
+          this.delete(id);
+        }
+      });
       this.$$cache = val;
     }
     return this;
