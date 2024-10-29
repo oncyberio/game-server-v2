@@ -8,7 +8,7 @@
     "node": ">= 16.13.0"
   },
   "scripts": {
-    "start": "tsx watch src/index.ts",
+    "start": "NODE_ENV=development tsx watch src/index.ts",
     "start-ssl": "SSL=true tsx watch src/index.ts",
     "loadtest": "tsx loadtest/example.ts --room my_room --numClients 2",
     "build": "npm run clean && tsc",

@@ -43,11 +43,15 @@ export class ServerApi {
   _roomJoin(player: PlayerData) {
     //
     this._state.players[player.sessionId] = player;
+
+    this._emitter.emit(RoomEvents.JOIN, player);
   }
 
   _roomLeave(player: PlayerData) {
     //
     delete this._state.players[player.sessionId];
+
+    this._emitter.emit(RoomEvents.LEAVE, player);
   }
 
   _roomPlayerState(player: PlayerData) {
