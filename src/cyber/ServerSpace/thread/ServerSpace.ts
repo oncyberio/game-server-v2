@@ -1,3 +1,4 @@
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { EventEmitter } from "events";
 import type { RoomState } from "../../schema/RoomState";
 import type { PlayerState } from "../../schema/PlayerState";
@@ -51,6 +52,7 @@ export class ServerSpace {
       component.type === "prefab" ||
       component.type === "script" ||
       component.type === "model" ||
+      component.type === "mesh" ||
       component.type === "group" ||
       // This will be handled by the engine by checking
       // either (deprecate) "use server" or config.server == true
@@ -72,6 +74,12 @@ export class ServerSpace {
 
     secrets?.forEach((secret) => {
       process.env[secret.key] = secret.value;
+    });
+
+    GlobalRegistrator.register({
+      url: "http://localhost:3000",
+      width: 1920,
+      height: 1080,
     });
 
     const res = await loadGame(gameData, {
@@ -275,6 +283,8 @@ export class ServerSpace {
     //
     let now = Date.now() / 1000;
 
+    this.engine.notify(this.engine.Events.ANIM_UPDATE, this.dt, now);
+
     this.engine.notify(this.engine.Events.PRE_UPDATE, this.dt, now);
 
     this._accumulatedTime += dt;
@@ -299,6 +309,8 @@ export class ServerSpace {
 
   dispose() {
     //
+    GlobalRegistrator.unregister();
+
     this.stopGame();
 
     clearInterval(this.iv);
