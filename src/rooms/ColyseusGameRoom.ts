@@ -128,6 +128,16 @@ export class ColyseusGameRoom extends Room {
 
       this._logger.info("Creating Room for game", this._gameId);
 
+      process.on("unhandledRejection", (reason, promise) => {
+        console.error("Unhandled Rejection at:", promise, "reason:", reason);
+        // Application specific logging, throwing an error, or other logic here
+      });
+
+      process.on("uncaughtException", (err) => {
+        console.error("Uncaught Exception thrown", err);
+        // Application specific logging, throwing an error, or other logic here
+      });
+
       await roomHandler._CALLBACKS_.create();
 
       if (this._disposed) return;
@@ -165,16 +175,9 @@ export class ColyseusGameRoom extends Room {
     }
   }
 
-  // @ts-ignore
-  async broadcastPatch() {
+  onBeforePatch() {
     //
-    // const now = Date.now();
-    await this._roomHandler?._CALLBACKS_.beforePatch();
-    // this.log("Patch time", Date.now() - now);
-
-    if (this._disposed) return;
-
-    return super.broadcastPatch();
+    this._roomHandler?._CALLBACKS_.beforePatch();
   }
 
   async onJoin(client: Client, options: any, auth: any) {

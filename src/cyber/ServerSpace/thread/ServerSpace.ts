@@ -1,25 +1,27 @@
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { EventEmitter } from "events";
 import type { RoomState } from "../../schema/RoomState";
 import type { PlayerState } from "../../schema/PlayerState";
 import * as ethers from "ethers";
 import { exitGame, loadGame } from "../loadGame";
-import { ServerApi } from "./ServerApi";
-import { Callback, Room } from "./RoomProxy";
-import { RoomEvents, SpaceEvents } from "./types";
+import { ServerApi, ServerHandler } from "./ServerApi";
 // @ts-ignore
 import { Web3Api, LocalProvider } from "@oogg/server-engine";
+import { PlayerData } from "../../abstract/types";
 
 export interface ServerSpaceParams {
   gameData: any;
   debugPhysics?: boolean;
   isDraft?: boolean;
+  serverHandler: ServerHandler;
 }
 
 export class ServerSpace {
   //
-
   engine = null;
   playerManager = null;
   space = null;
+  spawn: any = null;
   // avatar = null;
   // coins = null;
   // coinModel = null;
@@ -32,69 +34,15 @@ export class ServerSpace {
   iv = null;
   time = 0;
 
+  maxFrame = 0;
+  avgFrame = 0;
+
   static create() {
     //
     globalThis.$$serverSpace = new ServerSpace();
   }
 
-  constructor() {
-    //
-    Room.once(
-      RoomEvents.LOAD_SPACE,
-      async (
-        config: ServerSpaceParams,
-        resolve: Callback,
-        reject: Callback
-      ) => {
-        //
-        try {
-          await this.init(config);
-          resolve({
-            entities: this.serverApi._entitiesSchema,
-          });
-        } catch (err) {
-          console.error("Error loading space", err);
-          reject(err.message);
-        }
-      }
-    );
-
-    Room.on(RoomEvents.START_GAME, () => {
-      //
-      this.startGame();
-    });
-
-    Room.on(RoomEvents.STOP_GAME, () => {
-      //
-      this.stopGame();
-    });
-
-    Room.on(RoomEvents.JOIN, (player: PlayerState) => {
-      //
-      this.onJoin(player);
-    });
-
-    Room.on(RoomEvents.LEAVE, (player: PlayerState) => {
-      //
-      this.onLeave(player);
-    });
-
-    Room.on(RoomEvents.BEFORE_PATCH, (_, resolve, reject) => {
-      //
-      try {
-        const state = this.onBeforePatch();
-        resolve(state);
-      } catch (err) {
-        //
-        reject(err.message);
-      }
-    });
-
-    Room.on(RoomEvents.DISPOSE, () => {
-      //
-      this.dispose();
-    });
-  }
+  constructor() {}
 
   private canLoadComponent(component: any) {
     // this is a little hacky, should be moved to the engine
@@ -104,6 +52,7 @@ export class ServerSpace {
       component.type === "prefab" ||
       component.type === "script" ||
       component.type === "model" ||
+      component.type === "mesh" ||
       component.type === "group" ||
       // This will be handled by the engine by checking
       // either (deprecate) "use server" or config.server == true
@@ -117,12 +66,20 @@ export class ServerSpace {
     //
     const { gameData } = opts;
 
-    this.serverApi = new ServerApi();
+    this.spawn = gameData.components["spawn"];
+
+    this.serverApi = new ServerApi(opts.serverHandler);
 
     const secrets = gameData.components.multiplayer?.secrets;
 
     secrets?.forEach((secret) => {
       process.env[secret.key] = secret.value;
+    });
+
+    GlobalRegistrator.register({
+      url: "http://localhost:3000",
+      width: 1920,
+      height: 1080,
     });
 
     const res = await loadGame(gameData, {
@@ -141,7 +98,6 @@ export class ServerSpace {
       },
       isDraft: opts.isDraft ?? true,
       filter: (component: any) => {
-        // console.log("Component", component.id, component.name);
         return this.canLoadComponent(component);
       },
     });
@@ -152,48 +108,55 @@ export class ServerSpace {
 
     this.space = this.engine.getCurrentSpace();
 
+    console.log("Space loaded");
+
     // this.coins = coins;
     this.space.physics.active = true;
+
     this.space.physics.update(1 / 60);
+
     this.time = Date.now() / 1000;
+
     this.iv = setInterval(() => {
       const now = Date.now() / 1000;
       let dt = now - this.time;
       this.time = now;
       this.update(dt);
+      const dts = Date.now() / 1000 - now;
+      this.maxFrame = Math.max(dts, this.maxFrame);
+      this.avgFrame = dts;
     }, 1000 / 60);
 
-    Room.on(
-      RoomEvents.RPC_REQUEST,
-      async ({ request, sessionId }, resolve, reject) => {
-        //
-        try {
-          const { id, method, args } = request;
+    return {
+      entities: this.serverApi._entitiesSchema,
+    };
+  }
 
-          const instance = this._getRpcRecipient(id);
+  async handleRpcRequest({ request, sessionId }, resolve, reject) {
+    //
+    try {
+      const { id, method, args } = request;
 
-          if (instance == null) {
-            throw new Error("Instance not found " + id);
-          }
+      const instance = this._getRpcRecipient(id);
 
-          if (typeof instance.$$dispatchRpc !== "function") {
-            throw new Error("Rpc method not found");
-          }
-          const value = await instance.$$dispatchRpc(
-            method,
-            args.concat(sessionId)
-          );
-
-          resolve(value);
-
-          //
-        } catch (err) {
-          //
-          // console.error("Error", err);
-          reject(err.message);
-        }
+      if (instance == null) {
+        throw new Error("Instance not found " + id);
       }
-    );
+
+      if (typeof instance.$$dispatchRpc !== "function") {
+        throw new Error("Rpc method not found");
+      }
+      const value = await instance.$$dispatchRpc(
+        method,
+        args.concat(sessionId)
+      );
+
+      resolve(value);
+      //
+    } catch (err) {
+      // console.error("Error", err);
+      reject(err.message);
+    }
   }
 
   private _getRpcRecipient(rpcId: string) {
@@ -213,7 +176,7 @@ export class ServerSpace {
     this.space.stop();
   }
 
-  async onJoin(player: PlayerState) {
+  async onJoin(player: PlayerData) {
     //
     if (this.space == null) {
       console.error("Space not loaded!");
@@ -223,6 +186,8 @@ export class ServerSpace {
     const p = this.playerManager.addPlayer(player, {
       collision: true,
     });
+
+    this.serverApi._roomJoin(player);
 
     await p.avatarReady;
   }
@@ -281,9 +246,35 @@ export class ServerSpace {
     return state;
   }
 
-  onLeave(player: PlayerState) {
+  onLeave(player: PlayerData) {
     //
     this.playerManager.removePlayer(player.sessionId);
+
+    this.serverApi._roomLeave(player);
+  }
+
+  onPlayerState(data: PlayerData) {
+    //
+    const player = this.playerManager.get(data.sessionId);
+
+    if (this.spawn.useUserAvatar && player.avatar) {
+      if (data.vrmUrl && data.vrmUrl !== player.avatar.vrmUrl) {
+        // console.log(
+        //   "Update VRM",
+        //   data.sessionId,
+        //   data.vrmUrl,
+        //   player.avatar.collider.raw.radius()
+        // );
+        player.avatar.updateVRM(data.vrmUrl).then(() => {
+          // TODO, move to engine
+          const dims = player.avatar.getDimensions();
+          player.avatar.rigidBody?._updateColliders(dims);
+          // console.log("VRM Updated", player.avatar.collider.raw.radius());
+        });
+      }
+    }
+
+    this.serverApi._roomPlayerState(data);
   }
 
   private _accumulatedTime = 0;
@@ -291,6 +282,8 @@ export class ServerSpace {
   update(dt: number) {
     //
     let now = Date.now() / 1000;
+
+    this.engine.notify(this.engine.Events.ANIM_UPDATE, this.dt, now);
 
     this.engine.notify(this.engine.Events.PRE_UPDATE, this.dt, now);
 
@@ -306,10 +299,18 @@ export class ServerSpace {
 
       now += this.dt;
     }
+
+    this.engine.notify(
+      this.engine.Events.JUST_AFTER_PHYSICS_UPDATE,
+      this.dt,
+      now
+    );
   }
 
   dispose() {
     //
+    GlobalRegistrator.unregister();
+
     this.stopGame();
 
     clearInterval(this.iv);

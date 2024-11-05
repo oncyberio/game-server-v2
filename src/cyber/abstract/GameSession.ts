@@ -16,7 +16,7 @@ import {
 import { RoomState } from "../schema/RoomState";
 import { calcLatencyIPDTV } from "./utils";
 import { PlayerState } from "../schema/PlayerState";
-import { type SpaceProxy, createServerSpace } from "../ServerSpace/thread";
+import { SpaceProxy } from "../ServerSpace/thread/SpaceProxy";
 
 const defaults = {
   autoStart: false,
@@ -150,17 +150,13 @@ export abstract class GameSession<
   }
 
   startGame(countdownSecs: number) {
-    //
     console.log("Starting game in", countdownSecs, "seconds");
-
     const countdownMillis = countdownSecs * 1000;
 
     // notift all players after countdown, take into account player's latency
     this.state.players.forEach((player) => {
       const latency = player.latency ?? 0;
-
       const delay = Math.max(0, countdownMillis - latency);
-
       this.ctx.sendMsg(
         CYBER_MSG,
         {
@@ -353,7 +349,7 @@ export abstract class GameSession<
 
       if (this.serverEngine.enabled) {
         //
-        this.spaceProxy = createServerSpace();
+        this.spaceProxy = new SpaceProxy();
 
         // We must run the server space, so that the space scripts
         // can attach their schemas to the room state
@@ -386,6 +382,8 @@ export abstract class GameSession<
         },
       });
 
+      this.state.stats.start();
+
       console.log("Room created", this.gameId);
     },
 
@@ -405,7 +403,7 @@ export abstract class GameSession<
       await Promise.resolve(this.onJoin(player));
       this.spaceProxy?.onJoin(player);
       // send ping to client to measure latency
-      // this._PING_._pingLoop(playerData.sessionId);
+      this._PING_._pingLoop(playerData.sessionId);
       console.log("player joined", playerData.sessionId);
     },
 
@@ -439,7 +437,7 @@ export abstract class GameSession<
 
       console.log("player left", sessionId);
 
-      // this._PING_._clearPingLoop(sessionId);
+      this._PING_._clearPingLoop(sessionId);
 
       this.state.removePlayer(sessionId);
 
@@ -458,9 +456,9 @@ export abstract class GameSession<
 
     prevTimestamp: Date.now(),
 
-    beforePatch: async () => {
+    beforePatch: () => {
       //
-      await this.spaceProxy?.onBeforePatch(this.state.toJSON());
+      this.spaceProxy?.onBeforePatch();
       this.state.snapshotId = Math.random().toString(36).substring(2, 7);
       this.state.timestamp = Date.now();
     },
@@ -493,9 +491,9 @@ export abstract class GameSession<
             handler(message.data, reply, sessionId);
           });
         }
-      } else if (message.type === Messages.PING) {
+      } else if (message.type === Messages.PONG) {
         //
-        // this._PING_._onPong(message, sessionId);
+        this._PING_._onPong(message, sessionId);
         //
       } else {
         //
@@ -561,6 +559,8 @@ export abstract class GameSession<
 
     shutdown: () => {
       //
+      this._PING_._clearAllPingLoops();
+      this.state.stats.stop();
       this._gameLoop.stop();
       this.spaceProxy?.dispose();
       this.onDispose();

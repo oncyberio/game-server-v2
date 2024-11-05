@@ -1,8 +1,13 @@
-import { Room } from "./RoomProxy";
 import { EventEmitter } from "events";
 import type { PlayerData } from "../../abstract/types";
 import type { RoomParams } from "../../abstract/GameSession";
-import { RoomEvents, SpaceEvents } from "./types";
+import { RoomEvents, SpaceEvent, SpaceEvents } from "./types";
+
+export interface ServerHandler {
+  disconnectPlayer(playerId: string): void;
+  send(type: string | number, message: any, playerId: string): void;
+  broadcast(type: string | number, message: any, exclude?: string[]): void;
+}
 
 export class ServerApi {
   //
@@ -14,65 +19,67 @@ export class ServerApi {
 
   private _roomParams: RoomParams;
 
-  constructor() {
+  constructor(public serverHandler: ServerHandler) {
     //
     // temporary hack to allow registering entities from server-side
     globalThis.$$registerEntity = (entity: string, schema: any) => {
       //
       this._entitiesSchema[entity] = schema;
     };
+  }
 
-    Room.on(RoomEvents.SYNC, (config: { params: RoomParams; state: any }) => {
+  _roomSync(config: { params: RoomParams; state: any }) {
+    //
+    this._state = config.state;
+    this._state.players = {};
+    this._roomParams = config.params;
+  }
+
+  _roomMsg(payload: any) {
+    //
+    this._emitter.emit(payload.type, payload.message, payload.playerId);
+  }
+
+  _roomJoin(player: PlayerData) {
+    //
+    this._state.players[player.sessionId] = player;
+
+    this._emitter.emit(RoomEvents.JOIN, player);
+  }
+
+  _roomLeave(player: PlayerData) {
+    //
+    delete this._state.players[player.sessionId];
+
+    this._emitter.emit(RoomEvents.LEAVE, player);
+  }
+
+  _roomPlayerState(player: PlayerData) {
+    //
+    // console.log("PLAYER_STATE", player);
+
+    if (this._roomParams.authoritativePosition) {
       //
-      this._state = config.state;
-      this._state.players = {};
-      this._roomParams = config.params;
+      delete player.position;
+      delete player.rotation;
+    }
 
-      Room.postMessage(SpaceEvents.READY, {});
-    });
-
-    Room.on(RoomEvents.MESSAGE, (payload: any) => {
-      //
-      this._emitter.emit(payload.type, payload.message, payload.playerId);
-    });
-
-    Room.on(RoomEvents.JOIN, (player: PlayerData) => {
-      //
-      this._state.players[player.sessionId] = player;
-    });
-
-    Room.on(RoomEvents.LEAVE, (player: PlayerData) => {
-      //
-      delete this._state.players[player.sessionId];
-    });
-
-    Room.on(RoomEvents.PLAYER_STATE, (player: PlayerData) => {
-      //
-      // console.log("PLAYER_STATE", player);
-
-      if (this._roomParams.authoritativePosition) {
-        //
-        delete player.position;
-        delete player.rotation;
-      }
-
-      Object.assign(this._state.players[player.sessionId], player);
-    });
+    Object.assign(this._state.players[player.sessionId], player);
   }
 
   disconnectPlayer(playerId: string) {
     //
-    Room.postMessage(SpaceEvents.DISCONNECT, playerId);
+    this.serverHandler.disconnectPlayer(playerId);
   }
 
   onJoin(cb: (player: PlayerData) => void) {
     //
-    return Room.on(RoomEvents.JOIN, cb);
+    return this._emitter.on(RoomEvents.JOIN, cb);
   }
 
   onLeave(cb: (player: PlayerData) => void) {
     //
-    return Room.on(RoomEvents.LEAVE, cb);
+    return this._emitter.on(RoomEvents.LEAVE, cb);
   }
 
   get state() {
@@ -80,11 +87,11 @@ export class ServerApi {
   }
 
   send(type: string | number, message: any, playerId: string) {
-    Room.send(type, message, playerId);
+    this.serverHandler.send(type, message, playerId);
   }
 
   broadcast(type: string | number, message: any, exclude?: string[]) {
-    Room.broadcast(type, message, exclude);
+    this.serverHandler.broadcast(type, message, exclude);
   }
 
   onMessage(

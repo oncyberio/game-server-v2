@@ -53,6 +53,11 @@ const gameServer = new Server({
   }),
 });
 
+// if running on a local address 127... then simulate latency
+if (process.env.NODE_ENV === "development") {
+  gameServer.simulateLatency(100);
+}
+
 Object.keys(rooms).forEach((key) => {
   gameServer.define(key, rooms[key]);
 });
