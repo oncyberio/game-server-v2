@@ -12,7 +12,10 @@ const mutex = new Mutex();
 
 export function initializeExpress(app: any) {
   //
-  app.use(cors());
+
+  app.use(cors("*"));
+
+  app.options("*", cors());
 
   if (process.env.NODE_ENV !== "production") {
     app.use("/", playground);
