@@ -10,12 +10,20 @@ import { GameApi } from "../cyber/abstract/GameApi";
 
 const mutex = new Mutex();
 
+const corsOptions = {
+  origin: "*",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  credentials: true,
+};
+
 export function initializeExpress(app: any) {
   //
 
-  app.use(cors("*"));
+  app.use(cors(corsOptions));
 
-  app.options("*", cors());
+  app.options("*", cors(corsOptions));
 
   if (process.env.NODE_ENV !== "production") {
     app.use("/", playground);
@@ -23,6 +31,15 @@ export function initializeExpress(app: any) {
 
   app.get("/", (req: Request, res: Response) => {
     res.send("Hello world from cyber!!");
+  });
+
+  // Ensure all responses include CORS headers
+  app.use((req: Request, res: Response, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+    next();
   });
 
   app.get("/getRoom", async (req: Request, res: Response) => {
