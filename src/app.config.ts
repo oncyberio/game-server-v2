@@ -1,97 +1,46 @@
 import config from "@colyseus/tools";
-import { WebSocketTransport } from "@colyseus/ws-transport";
-import fs from "fs";
-import { Server, RedisPresence } from "colyseus";
-import https from "https";
-import { createServer } from "http";
-import express from "express";
-import path from "path";
+import { monitor } from "@colyseus/monitor";
+import { playground } from "@colyseus/playground";
 import { rooms } from "./rooms";
-import { initializeExpress } from "./express";
 
-const SSL = process.env.SSL == "true";
-
-const PORT = SSL ? 443 : 2567;
-
-const app = express();
-
-app.use(express.json());
-
-initializeExpress(app);
-
-function getServer() {
-  if (!SSL) {
-    return createServer(app);
-  } else {
-    // Certificate
-    const privateKey = fs.readFileSync(
-      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/privkey.pem",
-      "utf8"
-    );
-    const certificate = fs.readFileSync(
-      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/cert.pem",
-      "utf8"
-    );
-    const ca = fs.readFileSync(
-      "/etc/letsencrypt/live/game-server-v2.oncyber.xyz/chain.pem",
-      "utf8"
-    );
-
-    const credentials = {
-      key: privateKey,
-      cert: certificate,
-      ca: ca,
-    };
-
-    return https.createServer(credentials, app);
-  }
-}
-
-const gameServer = new Server({
-  transport: new WebSocketTransport({
-    server: getServer(),
-  }),
-});
-
-// if running on a local address 127... then simulate latency
-if (process.env.NODE_ENV === "development") {
-  gameServer.simulateLatency(100);
-}
-
-Object.keys(rooms).forEach((key) => {
-  gameServer.define(key, rooms[key]);
-});
-
-export function listen() {
-  gameServer.listen(PORT).then(() => {
-    console.log("SSL", process.env.SSL);
-    console.log(`Listening on http://localhost:${PORT}`);
-  });
-}
-
-/*
 export default config({
   initializeGameServer: (gameServer) => {
-   
+    /**
+     * Define your room handlers:
+     */
     Object.keys(rooms).forEach((key) => {
       gameServer.define(key, rooms[key]);
     });
   },
 
-  initializeTransport: (options) => {
-    
-    return new WebSocketTransport({
-      server: getServer(),
-    });
-  },
-
   initializeExpress: (app) => {
-    //
-    initializeExpress(app);
+    /**
+     * Bind your custom express routes here:
+     * Read more: https://expressjs.com/en/starter/basic-routing.html
+     */
+    app.get("/hello_world", (req, res) => {
+      res.send("It's time to kick ass and chew bubblegum!");
+    });
+
+    /**
+     * Use @colyseus/playground
+     * (It is not recommended to expose this route in a production environment)
+     */
+    if (process.env.NODE_ENV !== "production") {
+      app.use("/", playground);
+    }
+
+    /**
+     * Use @colyseus/monitor
+     * It is recommended to protect this route with a password
+     * Read more: https://docs.colyseus.io/tools/monitor/#restrict-access-to-the-panel-using-a-password
+     */
+    app.use("/colyseus", monitor());
   },
 
   beforeListen: () => {
-    
+    /**
+     * Before before gameServer.listen() is called.
+     */
   },
 });
-*/
