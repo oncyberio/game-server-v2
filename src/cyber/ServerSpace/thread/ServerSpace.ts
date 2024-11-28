@@ -3,11 +3,20 @@ import { EventEmitter } from "events";
 import type { RoomState } from "../../schema/RoomState";
 import type { PlayerState } from "../../schema/PlayerState";
 import * as ethers from "ethers";
+import * as SolanaWeb3 from "@solana/web3.js";
+import { PrivyClient } from "@privy-io/server-auth";
+
 import { exitGame, loadGame } from "../loadGame";
 import { ServerApi, ServerHandler } from "./ServerApi";
 // @ts-ignore
 import { Web3Api, LocalProvider } from "@oogg/server-engine";
 import { PlayerData } from "../../abstract/types";
+
+const NEXT_PUBLIC_PRIVY_APP_ID = "cm2vnxyup06z1ger923noqdpe";
+const PRIVY_SECRET_KEY =
+  "5GiKmDcozNAK1fzyv612tc7gCq9hYJbTpz8JFgbKNcJUNrNLx4c4bmBg7QsPmCc7HXUeb7oNpyUQCmtBqUuZQtoR";
+const WALLET_API_KEY =
+  "wallet-api:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgi5ZQEtaKgi5zlRMdK5p1Y5W2v/KJvR7EKuxXV8UI+TKhRANCAAQDg8MPpOutIrRM6EI4JEhZA0G82f37kt3/+olfyePDnrtDPqbog5ke9U36KqppRdRuqCR5toZOeMDvfA48kmAH";
 
 export interface ServerSpaceParams {
   gameData: any;
@@ -92,6 +101,16 @@ export class ServerSpace {
             alchemyKey: process.env.ALCHEMY_KEY,
           }),
         }),
+        SolanaWeb3,
+        PrivyClient: new PrivyClient(
+          NEXT_PUBLIC_PRIVY_APP_ID,
+          PRIVY_SECRET_KEY,
+          {
+            walletApi: {
+              authorizationPrivateKey: WALLET_API_KEY,
+            },
+          }
+        ),
       },
       serverLibs: {
         ethers,
