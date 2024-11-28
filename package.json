@@ -38,13 +38,14 @@
     "@colyseus/playground": "^0.15.3",
     "@colyseus/tools": "^0.15.42",
     "@happy-dom/global-registrator": "^15.7.4",
-    "@oogg/server-engine": "1.0.0-alpha-17",
+    "@oogg/server-engine": "1.0.0-alpha-18",
     "async-mutex": "^0.5.0",
     "colyseus": "^0.15.0",
     "cors": "^2.8.5",
     "ethers": "6.13.3",
     "express": "^4.18.2",
     "express-basic-auth": "^1.2.1",
-    "happy-dom": "^15.7.4"
+    "happy-dom": "^15.7.4",
+    "openai": "^4.73.1"
   }
 }
