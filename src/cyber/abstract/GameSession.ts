@@ -401,7 +401,7 @@ export abstract class GameSession<
       //
       const player = this.state.addPlayer(playerData);
       await Promise.resolve(this.onJoin(player));
-      this.spaceProxy?.onJoin(player);
+      this.spaceProxy?.onJoin(player.toJSON());
       // send ping to client to measure latency
       this._PING_._pingLoop(playerData.sessionId);
       console.log("player joined", playerData.sessionId);
@@ -474,16 +474,30 @@ export abstract class GameSession<
           //
           const reply = message.msgId
             ? (data) => {
-                this.ctx.sendMsg(
-                  CYBER_MSG,
-                  {
-                    type: Messages.RPC,
-                    rpcId: message.rpcId,
-                    data,
-                    msgId: message.msgId,
-                  },
-                  sessionId
-                );
+                try {
+                  this.ctx.sendMsg(
+                    CYBER_MSG,
+                    {
+                      type: Messages.RPC,
+                      rpcId: message.rpcId,
+                      data,
+                      msgId: message.msgId,
+                    },
+                    sessionId
+                  );
+                } catch (e) {
+                  console.error("Error sending RPC reply", e);
+                  this.ctx.sendMsg(
+                    CYBER_MSG,
+                    {
+                      type: Messages.RPC,
+                      rpcId: message.rpcId,
+                      data: { error: e.message },
+                      msgId: message.msgId,
+                    },
+                    sessionId
+                  );
+                }
               }
             : () => {};
 
