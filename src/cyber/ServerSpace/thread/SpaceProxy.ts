@@ -56,31 +56,21 @@ export class SpaceProxy {
 
   private _initRpc() {
     //
-    this.session.onRpc("@@engine", async (request, reply, sessionId) => {
+    this.session.onRpc("@@engine", (request, reply, sessionId) => {
       //
-      try {
-        //
-        let value = await this.serverSpace.handleRpcRequest(
-          {
-            request,
-            sessionId,
-          },
-          (value) => {
-            reply({ value });
-          },
-          (error) => {
-            reply({ error });
-          }
-        );
-
-        reply({ value });
-        //
-      } catch (err) {
-        //
-        // console.error("Error", err);
-
-        reply({ error: err.message });
-      }
+      this.serverSpace.handleRpcRequest(
+        {
+          request,
+          sessionId,
+        },
+        (value) => {
+          reply({ value });
+        },
+        (error) => {
+          reply({ error });
+        }
+      );
+      //
     });
   }
 
