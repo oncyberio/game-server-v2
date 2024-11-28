@@ -2,6 +2,7 @@ import { EventEmitter } from "events";
 import type { PlayerData } from "../../abstract/types";
 import type { RoomParams } from "../../abstract/GameSession";
 import { RoomEvents, SpaceEvent, SpaceEvents } from "./types";
+import { Ai } from "./ai";
 
 export interface ServerHandler {
   disconnectPlayer(playerId: string): void;
@@ -104,5 +105,9 @@ export class ServerApi {
     return () => {
       this._emitter.off(type, cb);
     };
+  }
+
+  get ai() {
+    return Ai;
   }
 }
