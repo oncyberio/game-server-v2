@@ -13,5 +13,13 @@ import { listen } from "@colyseus/tools";
 // Import Colyseus config
 import app from "./app.config";
 
+/**
+ * IMPORTANT:
+ * ---------
+ * Somebody is overriding the global fetch function.
+ * Causing the calls from ai sdk to fail.
+ */
+globalThis.$$ofetch = fetch;
+
 // Create and listen on 2567 (or PORT environment variable.)
 listen(app);
