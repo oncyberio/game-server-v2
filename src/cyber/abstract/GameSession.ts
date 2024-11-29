@@ -310,6 +310,22 @@ export abstract class GameSession<
     return player;
   }
 
+  sendCyberMsg(msg: any, sessionId: string) {
+    this.ctx.sendMsg(CYBER_MSG, msg, sessionId);
+  }
+
+  sendRpcMsg(msg: any, sessionId: string) {
+    this.sendCyberMsg({ type: Messages.RPC, ...msg }, sessionId);
+  }
+
+  broadcastCyberMsg(msg: any, options?: { except?: string[] }) {
+    this.ctx.broadcastMsg(CYBER_MSG, msg, options);
+  }
+
+  broadcastRpcMsg(msg: any, options?: { except?: string[] }) {
+    this.broadcastCyberMsg({ type: Messages.RPC, ...msg });
+  }
+
   /**
    * internal callbacks
    */
@@ -472,37 +488,8 @@ export abstract class GameSession<
 
         if (handlers != null) {
           //
-          const reply = message.msgId
-            ? (data) => {
-                try {
-                  this.ctx.sendMsg(
-                    CYBER_MSG,
-                    {
-                      type: Messages.RPC,
-                      rpcId: message.rpcId,
-                      data,
-                      msgId: message.msgId,
-                    },
-                    sessionId
-                  );
-                } catch (e) {
-                  console.error("Error sending RPC reply", e);
-                  this.ctx.sendMsg(
-                    CYBER_MSG,
-                    {
-                      type: Messages.RPC,
-                      rpcId: message.rpcId,
-                      data: { error: e.message },
-                      msgId: message.msgId,
-                    },
-                    sessionId
-                  );
-                }
-              }
-            : () => {};
-
           handlers.forEach((handler) => {
-            handler(message.data, reply, sessionId);
+            handler(message, sessionId);
           });
         }
       } else if (message.type === Messages.PONG) {

@@ -56,22 +56,37 @@ export class SpaceProxy {
 
   private _initRpc() {
     //
-    this.session.onRpc("@@engine", (request, reply, sessionId) => {
+    this.session.onRpc("@@engine", (request, sessionId) => {
       //
-      this.serverSpace.handleRpcRequest(
-        {
-          request,
-          sessionId,
-        },
-        (value) => {
-          reply({ value });
-        },
-        (error) => {
-          reply({ error });
-        }
-      );
-      //
+      this.serverSpace.handleRpcRequest({
+        request,
+        sessionId,
+      });
     });
+
+    const engine = this.serverSpace.engine;
+
+    const handleRpc = (req) => {
+      //
+      if (req.sessionId == "*") {
+        // broadcast
+        this.session.broadcastRpcMsg({
+          rpcId: "@@engine",
+          ...req,
+        });
+      } else {
+        this.session.sendRpcMsg(
+          {
+            rpcId: "@@engine",
+            ...req,
+          },
+          req.sessionId
+        );
+      }
+    };
+
+    engine.on(engine.Events.RPC_RESPONSE, handleRpc);
+    engine.on(engine.Events.RPC_REQUEST, handleRpc);
   }
 
   private _registerEntities(entities) {
