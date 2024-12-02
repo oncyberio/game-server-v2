@@ -323,7 +323,7 @@ export abstract class GameSession<
   }
 
   broadcastRpcMsg(msg: any, options?: { except?: string[] }) {
-    this.broadcastCyberMsg({ type: Messages.RPC, ...msg });
+    this.broadcastCyberMsg({ type: Messages.RPC, ...msg }, options);
   }
 
   /**

@@ -9,6 +9,8 @@ export class SpaceProxy {
 
   private serverSpace = new ServerSpace();
 
+  private _disposers = [];
+
   constructor() {}
 
   _nbLogs = 0;
@@ -49,6 +51,8 @@ export class SpaceProxy {
       serverHandler,
     });
 
+    // console.log("ServerSpace init", this.session.ctx._uroomid);
+
     this._registerEntities(res.entities);
 
     this._initRpc();
@@ -58,6 +62,8 @@ export class SpaceProxy {
     //
     this.session.onRpc("@@engine", (request, sessionId) => {
       //
+      // console.log("RPC Remote", request.data.method, this.session.ctx._uroomid);
+
       this.serverSpace.handleRpcRequest({
         request,
         sessionId,
@@ -68,12 +74,20 @@ export class SpaceProxy {
 
     const handleRpc = (req) => {
       //
-      if (req.sessionId == "*") {
+      // console.log("RPC", req);
+
+      if (req.sessionId == "*" || Array.isArray(req.sessionId?.except)) {
         // broadcast
-        this.session.broadcastRpcMsg({
-          rpcId: "@@engine",
-          ...req,
-        });
+        let opts = req.sessionId?.except
+          ? { except: req.sessionId.except }
+          : {};
+        this.session.broadcastRpcMsg(
+          {
+            rpcId: "@@engine",
+            ...req,
+          },
+          opts
+        );
       } else {
         this.session.sendRpcMsg(
           {
@@ -85,8 +99,10 @@ export class SpaceProxy {
       }
     };
 
-    engine.on(engine.Events.RPC_RESPONSE, handleRpc);
-    engine.on(engine.Events.RPC_REQUEST, handleRpc);
+    this._disposers.push(
+      engine.on(engine.Events.RPC_RESPONSE, handleRpc),
+      engine.on(engine.Events.RPC_REQUEST, handleRpc)
+    );
   }
 
   private _registerEntities(entities) {
@@ -172,6 +188,8 @@ export class SpaceProxy {
 
   dispose() {
     //
+    this._disposers.forEach((d) => d());
+
     this.serverSpace.dispose();
   }
 }
