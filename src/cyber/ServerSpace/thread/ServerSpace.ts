@@ -86,6 +86,7 @@ export class ServerSpace {
       debugPhysics: opts.debugPhysics ?? true,
       serverApi: {
         GameServer: this.serverApi,
+        Ai: this.serverApi.ai,
         Web3: new Web3Api({
           web3provider: new LocalProvider({
             privateKey: process.env.PRIVATE_KEY,
@@ -132,31 +133,21 @@ export class ServerSpace {
     };
   }
 
-  async handleRpcRequest({ request, sessionId }, resolve, reject) {
+  async handleRpcRequest({ request, sessionId }) {
     //
-    try {
-      const { id, method, args } = request;
+    const { data, msgId } = request;
 
-      const instance = this._getRpcRecipient(id);
+    let isReq = !!data.method;
 
-      if (instance == null) {
-        throw new Error("Instance not found " + id);
-      }
+    let event = isReq
+      ? this.engine.Events.RPC_REMOTE_REQ
+      : this.engine.Events.RPC_REMOTE_RES;
 
-      if (typeof instance.$$dispatchRpc !== "function") {
-        throw new Error("Rpc method not found");
-      }
-      const value = await instance.$$dispatchRpc(
-        method,
-        args.concat(sessionId)
-      );
-
-      resolve(value);
-      //
-    } catch (err) {
-      // console.error("Error", err);
-      reject(err.message);
-    }
+    this.engine.notify(event, {
+      data,
+      msgId,
+      sessionId,
+    });
   }
 
   private _getRpcRecipient(rpcId: string) {

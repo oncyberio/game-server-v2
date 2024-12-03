@@ -9,6 +9,8 @@ export class SpaceProxy {
 
   private serverSpace = new ServerSpace();
 
+  private _disposers = [];
+
   constructor() {}
 
   _nbLogs = 0;
@@ -49,6 +51,8 @@ export class SpaceProxy {
       serverHandler,
     });
 
+    // console.log("ServerSpace init", this.session.ctx._uroomid);
+
     this._registerEntities(res.entities);
 
     this._initRpc();
@@ -56,22 +60,49 @@ export class SpaceProxy {
 
   private _initRpc() {
     //
-    this.session.onRpc("@@engine", (request, reply, sessionId) => {
+    this.session.onRpc("@@engine", (request, sessionId) => {
       //
-      this.serverSpace.handleRpcRequest(
-        {
-          request,
-          sessionId,
-        },
-        (value) => {
-          reply({ value });
-        },
-        (error) => {
-          reply({ error });
-        }
-      );
-      //
+      // console.log("RPC Remote", request.data.method, this.session.ctx._uroomid);
+
+      this.serverSpace.handleRpcRequest({
+        request,
+        sessionId,
+      });
     });
+
+    const engine = this.serverSpace.engine;
+
+    const handleRpc = (req) => {
+      //
+      // console.log("RPC", req);
+
+      if (req.sessionId == "*" || Array.isArray(req.sessionId?.except)) {
+        // broadcast
+        let opts = req.sessionId?.except
+          ? { except: req.sessionId.except }
+          : {};
+        this.session.broadcastRpcMsg(
+          {
+            rpcId: "@@engine",
+            ...req,
+          },
+          opts
+        );
+      } else {
+        this.session.sendRpcMsg(
+          {
+            rpcId: "@@engine",
+            ...req,
+          },
+          req.sessionId
+        );
+      }
+    };
+
+    this._disposers.push(
+      engine.on(engine.Events.RPC_RESPONSE, handleRpc),
+      engine.on(engine.Events.RPC_REQUEST, handleRpc)
+    );
   }
 
   private _registerEntities(entities) {
@@ -157,6 +188,8 @@ export class SpaceProxy {
 
   dispose() {
     //
+    this._disposers.forEach((d) => d());
+
     this.serverSpace.dispose();
   }
 }

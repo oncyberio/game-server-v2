@@ -19,6 +19,8 @@ export class ColyseusGameRoom extends Room {
 
   private _logger = logger;
 
+  private _uroomid: string;
+
   // tickRate = this._room.tickRate ?? defaults.TICK_RATE;
 
   constructor(...args) {
@@ -27,6 +29,8 @@ export class ColyseusGameRoom extends Room {
     // this.setSimulationInterval(() => {
     //     this._room._CALLBACKS_.tick();
     // }, this.tickRate);
+
+    this._uroomid = Math.random().toString(36).substring(2, 7);
   }
 
   private _setRoomHandler(handler: any) {
@@ -64,14 +68,20 @@ export class ColyseusGameRoom extends Room {
 
   getClient(sessionId: string) {
     const client = this.clients.getById(sessionId);
+
     if (!client) {
-      console.error(`Client ${sessionId} not found`);
+      throw new Error(`Client ${sessionId} not found`);
     }
     return client;
   }
 
   sendMsg(type: any, msg: any, sessionId: string) {
-    this.getClient(sessionId)?.send(type, msg);
+    try {
+      this.getClient(sessionId)?.send(type, msg);
+    } catch (err) {
+      console.error("error sending message", this._uroomid, msg);
+      throw err;
+    }
   }
 
   broadcastMsg(type: any, msg: any, opts: { except?: string[] } = {}) {
