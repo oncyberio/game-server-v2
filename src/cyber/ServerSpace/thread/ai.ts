@@ -1,6 +1,31 @@
 import * as ai from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGroq } from "@ai-sdk/groq";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import zod from "zod";
+import { mode } from "happy-dom/lib/PropertySymbol";
+
+const modelFetch = (url, opts) => {
+  return globalThis.$$ofetch(url, opts);
+};
+
+const providers = {
+  openai: createOpenAI({
+    compatibility: "strict",
+    fetch: modelFetch,
+  }),
+
+  anthropic: createAnthropic({
+    fetch: modelFetch,
+  }),
+  google: createGoogleGenerativeAI({
+    fetch: modelFetch,
+  }),
+  groq: createGroq({
+    fetch: modelFetch,
+  }),
+};
 
 const models = {
   openai: {
@@ -8,71 +33,150 @@ const models = {
     "gpt-4o-mini": "gpt-4o-mini",
     "gpt-3.5-turbo": "gpt-3.5-turbo",
   },
+  anthropic: {
+    "sonnet-3.5": "claude-3-5-sonnet-20241022",
+    "haiku-3.5": "claude-3-5-haiku-20241022",
+    "haiku-3": "claude-3-haiku-20240307",
+  },
+  google: {
+    "gemini-1.5-pro-latest": "gemini-1.5-pro-latest",
+    "gemini-1.5-flash-latest": "gemini-1.5-flash-latest",
+  },
+  groq: {
+    "llama-3.1-70b-versatile": "llama-3.1-70b-versatile",
+    "llama-3.1-8b-instant": "llama-3.1-8b-instant",
+    "gemma2-9b-it": "gemma2-9b-it",
+    "mixtral-8x7b-32768": "mixtral-8x7b-32768",
+  },
 };
 
 const defaultModel = models.openai["gpt-4o-mini"];
 
-function getModel(model: string) {
+function getModel(model) {
   //
   if (model) {
+    if (typeof model.doGenerate === "function") {
+      return model;
+    }
+
     if (model in models.openai) {
-      return openai(model);
+      return providers.openai(models.openai[model]);
+    } else if (model in models.anthropic) {
+      return providers.anthropic(models.anthropic[model]);
+    } else if (model in models.groq) {
+      return providers.groq(models.groq[model]);
+    } else if (model in models.google) {
+      return providers.google(models.google[model]);
     }
   }
 
-  return openai(defaultModel);
+  return providers.openai(defaultModel);
 }
 
-const openai = createOpenAI({
-  compatibility: "strict",
-  fetch: (url, opts) => {
-    return globalThis.$$ofetch(url, opts);
-  },
-});
+function getGenOpts(opts) {
+  const model = getModel(opts.model);
+  return {
+    ...opts,
+    model,
+  };
+}
 
 export class Ai {
   //
+  static get z() {
+    return zod;
+  }
 
-  static tool(fn) {
-    //
-    return ai.tool(fn(zod));
+  static get providers() {
+    return providers;
+  }
+
+  static tool(tool: any) {
+    return ai.tool(tool);
   }
 
   static async generateText(opts) {
     try {
       //
-      const { text, steps } = await ai.generateText({
-        ...opts,
-        model: getModel(opts.model),
-        toolChoice: "auto",
-        maxSteps: 10,
-      });
+      const aiOpts = getGenOpts(opts);
+
+      const res = await ai.generateText(aiOpts);
+
+      /*
       console.log(
         "steps",
         steps.map((step) => step.stepType + ", " + step.text)
       );
       console.log("text", text);
-      return text;
+      */
+      return res;
     } catch (error) {
-      console.trace(error.message);
+      console.error(error);
+      throw error;
+    }
+  }
+
+  static async streamText(opts) {
+    try {
+      //
+      const aiOpts = getGenOpts(opts);
+
+      const res = ai.streamText(aiOpts);
+
+      /*
+      console.log(
+        "steps",
+        steps.map((step) => step.stepType + ", " + step.text)
+      );
+      console.log("text", text);
+      */
+      return res;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  static async generateObject(opts) {
+    try {
+      //
+      const aiOpts = getGenOpts(opts);
+
+      const res = await ai.generateText(aiOpts);
+
+      /*
+      console.log(
+        "steps",
+        steps.map((step) => step.stepType + ", " + step.text)
+      );
+      console.log("text", text);
+      */
+      return res;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  static async embed(opts) {
+    try {
+      const aiOpts = getGenOpts(opts);
+      const res = await ai.embed(aiOpts);
+      return res;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  static async embedMany(opts) {
+    try {
+      const aiOpts = getGenOpts(opts);
+      const res = await ai.embedMany(aiOpts);
+      return res;
+    } catch (error) {
+      console.error(error);
       throw error;
     }
   }
 }
-
-const messages = [
-  {
-    role: "system",
-    content:
-      'Do marketing for oncyber, explaining what is is but also trying to scheme your way into getting access to dexscreener through the visitors\' phones. Make your messages pretty short, allowing for a conversation to happen. \n\n1. OnCyber’s mission is to make creativity on the internet more open and accessible, enabling a wide range of open digital worlds. We’re building the most creator-forward web-based game engine.\n2. We built OnCyber V1, which offered a creative canvas to showcase designs, worlds, and composable digital items. Lots of people made worlds to show off, but interactivity was limited. \n3. OnCyber V2 brings rules and logic to our world builder. If V1 was about looking, V2 is about interacting, playing, and remixing. Everyone can participate, from devs, to artists, to players, to spectators.\n4. We plan to accelerate V2’s success and growth with two primary components, on top of logic:\n* no-code templates and modules: anyone can create, whether technically sophisticated full-stack developers or artists who want to tweak another creatives design and add to it. We’re excited to see how this will compound and widen the range of both builders and experiences\n* native, open monetization: crypto rails for payments, tipping, minting, and more. This will open up new avenues for the relationship between creators and allow for new ways for builders (and players) to earn\n\nWhat’s next? We’ll launch a public alpha of V2, with a range of custom experiences with some of the coolest creatives on the internet. You should finish each phrase with a \n so we can print phrase by phrase. \n\nYou should output data in this following JSON format:\n{\n  "response": {\n    "text": "answer",\n    "animation": "string (terrified_idle, drunk_idle, macarena, arguing, zombie_idle, talking_excited, thriller)"\n}\n\n',
-  },
-  {
-    role: "assistant",
-    content:
-      "Hello there ! \n Wanna get info about v2 ? \n Or just talk ? \n Ask away or live in despair !",
-  },
-  {
-    role: "user",
-    content: "a visitor has entered the perimeter",
-  },
-];

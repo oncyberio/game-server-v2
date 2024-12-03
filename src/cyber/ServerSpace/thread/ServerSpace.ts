@@ -86,6 +86,7 @@ export class ServerSpace {
       debugPhysics: opts.debugPhysics ?? true,
       serverApi: {
         GameServer: this.serverApi,
+        Ai: this.serverApi.ai,
         Web3: new Web3Api({
           web3provider: new LocalProvider({
             privateKey: process.env.PRIVATE_KEY,
