@@ -16,10 +16,14 @@ import {
 	SetParamsEvent,
 	TradeEvent,
 } from "pumpdotfun-sdk";
+
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+
 import { balanceChecker } from "./balance";
-import { priceChecker } from "./price";
-import { marketcapChecker } from "./marketcap";
+
+import { getPrice as _getPrice } from "./price";
+
+import { getMarketcap as _getMartketCap } from "./marketcap";
 
 // handler
 export async function fetchMetadata({ mintAddress }) {
@@ -45,7 +49,7 @@ export async function fetchMetadata({ mintAddress }) {
 			console.log(err);
 		}
 
-		return { success: true, metadata: tokenMetadata };
+		return tokenMetadata;
 	} catch (error) {
 		console.error(error);
 		return { error: error.message, success: false };
@@ -53,23 +57,9 @@ export async function fetchMetadata({ mintAddress }) {
 }
 
 export function addEventListener(
-	eventName: keyof PumpFunEventHandlers | "price" | "balance" | "marketcap",
+	eventName: keyof PumpFunEventHandlers,
 	callback: (
-		event:
-			| CreateEvent
-			| TradeEvent
-			| CompleteEvent
-			| SetParamsEvent
-			| {
-					price: number;
-			  }
-			| {
-					balance: number | null;
-					mint: string | null;
-			  }
-			| {
-					marketcap: number;
-			  },
+		event: CreateEvent | TradeEvent | CompleteEvent | SetParamsEvent,
 		slot: number | null,
 		signature: string | null
 	) => void,
@@ -78,23 +68,6 @@ export function addEventListener(
 		ownerAddress?: string;
 	}
 ) {
-	if (eventName === "price") {
-		priceChecker.addEventListener(eventName, callback, filters);
-
-		return;
-	}
-
-	if (eventName === "balance") {
-		balanceChecker.addEventListener(eventName, callback, filters);
-
-		return;
-	}
-
-	if (eventName === "marketcap") {
-		marketcapChecker.addEventListener(eventName, callback, filters);
-		return;
-	}
-
 	const interval = setInterval(() => {
 		if (!pumpfunSDK?.program?.addEventListener) {
 			return;
@@ -105,3 +78,7 @@ export function addEventListener(
 		pumpfunSDK.addEventListener(eventName, callback);
 	}, 1000);
 }
+
+export const getPrice = _getPrice;
+
+export const getMarketcap = _getMartketCap;

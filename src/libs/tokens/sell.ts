@@ -34,11 +34,11 @@ export async function sell(
 	//
 	//
 	try {
-		if (delegate) {
-			userAddress = await getDelegateWallet({
-				token: this.token,
-			});
-		}
+		// if (delegate) {
+		// 	userAddress = await getDelegateWallet({
+		// 		privyId: privyUserId,
+		// 	});
+		// }
 
 		const bc = await pumpfunSDK.getBondingCurveAccount(
 			new PublicKey(mintAddress)
@@ -49,7 +49,7 @@ export async function sell(
 				from: mintAddress,
 				to: "So11111111111111111111111111111111111111112",
 				userAddress,
-				amount,
+				amount: amount * 10 ** 6,
 				slippage,
 				// priorityFee,
 				delegate,

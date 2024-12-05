@@ -34,11 +34,11 @@ export async function buy(
 ) {
 	//
 	try {
-		if (delegate) {
-			userAddress = await getDelegateWallet({
-				token: this.token,
-			});
-		}
+		// if (delegate) {
+		// 	userAddress = await getDelegateWallet({
+		// 		privyId: privyUserId,
+		// 	});
+		// }
 
 		const amount_lamports = amount * LAMPORTS_PER_SOL;
 

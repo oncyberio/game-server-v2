@@ -13,8 +13,34 @@ export function calculatePumpCurvePrice(bondingCurveData) {
 	const { virtualTokenReserves, virtualSolReserves } = bondingCurveData;
 
 	return (
-		virtualSolReserves / LAMPORTS_PER_SOL / (virtualTokenReserves / 10 ** 6)
+		Number(virtualSolReserves) /
+		LAMPORTS_PER_SOL /
+		(Number(virtualTokenReserves) / 10 ** 6)
 	);
+}
+
+export async function getPrice(mintAddress) {
+	const boundingCurveAccount = await pumpfunSDK.getBondingCurveAccount(
+		new PublicKey(mintAddress)
+	);
+
+	if (boundingCurveAccount && !boundingCurveAccount?.complete) {
+		const price = calculatePumpCurvePrice(boundingCurveAccount);
+
+		return {
+			price: Number(price),
+		};
+	}
+
+	const request = await fetch(
+		`https://api.jup.ag/price/v2?ids=${mintAddress}`
+	);
+
+	const response = await request.json();
+
+	return {
+		price: response.data[mintAddress].price,
+	};
 }
 
 class PriceChecker {
@@ -31,8 +57,6 @@ class PriceChecker {
 
 	inited = false;
 
-	interval: any;
-
 	refreshRate = 3000;
 
 	start = () => {
@@ -41,7 +65,9 @@ class PriceChecker {
 		this.getPrices();
 	};
 
-	async getPrices() {
+	getPrices = async () => {
+		if (!this.inited) return;
+
 		let checkPriceAddresses = Object.keys(this.callbacks);
 
 		if (checkPriceAddresses.length === 0) {
@@ -117,14 +143,12 @@ class PriceChecker {
 					resolve(null);
 				}, this.refreshRate);
 			});
-
 			this.getPrices();
 		}
-	}
+	};
 
 	dispose = () => {
 		this.inited = false;
-		clearInterval(this.interval);
 	};
 
 	addEventListener = (
@@ -135,10 +159,6 @@ class PriceChecker {
 			ownerAddress?: string;
 		}
 	) => {
-		if (!this.inited) {
-			this.start();
-		}
-
 		if (!this.callbacks[filters.mintAddress]) {
 			this.callbacks[filters.mintAddress] = {
 				eventName,
@@ -148,6 +168,10 @@ class PriceChecker {
 		}
 
 		this.callbacks[filters.mintAddress].callbacks.push(callback);
+
+		if (!this.inited) {
+			this.start();
+		}
 	};
 
 	removeEventListener = (

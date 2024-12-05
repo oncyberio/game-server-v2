@@ -17,6 +17,35 @@ export function calculatePumpCurvePrice(bondingCurveData) {
 	);
 }
 
+export async function getMarketcap(mintAddress) {
+	const boundingCurveAccount = await pumpfunSDK.getBondingCurveAccount(
+		new PublicKey(mintAddress)
+	);
+
+	if (!boundingCurveAccount.complete) {
+		const price = calculatePumpCurvePrice(boundingCurveAccount);
+
+		return {
+			marketcap:
+				(price *
+					(Number(boundingCurveAccount.tokenTotalSupply) / 10 ** 6)) /
+				LAMPORTS_PER_SOL,
+		};
+	}
+
+	const request = await fetch(
+		`https://api.jup.ag/price/v2?ids=${mintAddress}`
+	);
+
+	const response = await request.json();
+
+	return {
+		marketcap:
+			response.data[mintAddress].price *
+			(Number(boundingCurveAccount.tokenTotalSupply) / 10 ** 6),
+	};
+}
+
 class MarketcapChecker {
 	callbacks: {
 		[key: string]: {

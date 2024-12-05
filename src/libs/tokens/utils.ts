@@ -4,6 +4,7 @@ import {
 	Transaction,
 	ComputeBudgetProgram,
 	VersionedTransaction,
+	LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 
 import jwt from "jsonwebtoken";
@@ -14,7 +15,9 @@ import { AnchorProvider } from "@coral-xyz/anchor";
 
 import { buildVersionedTx, PumpFunSDK } from "pumpdotfun-sdk";
 
-export const CONNECTION = new Connection("https://api.mainnet-beta.solana.com");
+export const CONNECTION = new Connection(
+	"https://mainnet.helius-rpc.com/?api-key=8d991eed-5073-4a20-8d81-78e30b17241e"
+);
 
 export const privyClient = new PrivyClient(
 	process.env.NEXT_PUBLIC_PRIVY_APP_ID,
@@ -58,10 +61,8 @@ export async function runDelegatedTransaction(userAddress, versionedTx) {
 	};
 }
 
-export async function getDelegateWallet({ token }) {
-	const decodedToken = jwt.verify(token, process.env.SECRET_JWT_KEY) as any;
-
-	const privyUserId = decodedToken.privyId;
+export async function getDelegateWallet({ privyId }) {
+	const privyUserId = privyId;
 
 	const user = await privyClient.getUser(`${privyUserId}`);
 
