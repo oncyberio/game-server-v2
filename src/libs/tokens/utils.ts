@@ -4,10 +4,7 @@ import {
 	Transaction,
 	ComputeBudgetProgram,
 	VersionedTransaction,
-	LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-
-import jwt from "jsonwebtoken";
 
 import { PrivyClient, WalletWithMetadata } from "@privy-io/server-auth";
 
@@ -15,9 +12,10 @@ import { AnchorProvider } from "@coral-xyz/anchor";
 
 import { buildVersionedTx, PumpFunSDK } from "pumpdotfun-sdk";
 
-export const CONNECTION = new Connection(
-	"https://mainnet.helius-rpc.com/?api-key=8d991eed-5073-4a20-8d81-78e30b17241e"
-);
+export const CONNECTION_URL =
+	"https://mainnet.helius-rpc.com/?api-key=8d991eed-5073-4a20-8d81-78e30b17241e";
+
+export const CONNECTION = new Connection(CONNECTION_URL);
 
 export const privyClient = new PrivyClient(
 	process.env.NEXT_PUBLIC_PRIVY_APP_ID,

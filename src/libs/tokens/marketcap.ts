@@ -13,7 +13,9 @@ export function calculatePumpCurvePrice(bondingCurveData) {
 	const { virtualTokenReserves, virtualSolReserves } = bondingCurveData;
 
 	return (
-		virtualSolReserves / LAMPORTS_PER_SOL / (virtualTokenReserves / 10 ** 6)
+		Number(virtualSolReserves) /
+		LAMPORTS_PER_SOL /
+		(Number(virtualTokenReserves) / 10 ** 6)
 	);
 }
 
@@ -27,9 +29,9 @@ export async function getMarketcap(mintAddress) {
 
 		return {
 			marketcap:
-				(price *
-					(Number(boundingCurveAccount.tokenTotalSupply) / 10 ** 6)) /
-				LAMPORTS_PER_SOL,
+				price *
+				(Number(boundingCurveAccount.tokenTotalSupply) / 10 ** 6),
+			isNotComplete: true,
 		};
 	}
 
