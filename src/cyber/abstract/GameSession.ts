@@ -120,7 +120,7 @@ export abstract class GameSession<
     this.ctx.onMsg(CYBER_MSG, this._CALLBACKS_.cyberMsg);
 
     (this.ctx as any).onMessage("*", (client, type, message) => {
-      this.spaceProxy.onMessage(type, message, client.sessionId);
+      this.spaceProxy?.onMessage(type, message, client.sessionId);
     });
   }
 
@@ -365,15 +365,23 @@ export abstract class GameSession<
 
       if (this.serverEngine.enabled) {
         //
-        this.spaceProxy = new SpaceProxy();
+        const noServerSpace = process.env.NO_SERVER_SIDE_PHYSICS;
 
-        // We must run the server space, so that the space scripts
-        // can attach their schemas to the room state
-        await this.spaceProxy.init({
-          session: this,
-          debugPhysics: true,
-          isDraft: true,
-        });
+        if (noServerSpace) {
+          //
+          console.error("Server side physics is disabled in this environment");
+        } else {
+          //
+          this.spaceProxy = new SpaceProxy();
+
+          // We must run the server space, so that the space scripts
+          // can attach their schemas to the room state
+          await this.spaceProxy.init({
+            session: this,
+            debugPhysics: true,
+            isDraft: true,
+          });
+        }
       }
 
       await this.onPreload();
