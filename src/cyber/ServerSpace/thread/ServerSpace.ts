@@ -50,6 +50,7 @@ export class ServerSpace {
     // so that we can make quick changes
     return (
       component.type === "prefab" ||
+      component.type === "navmesh" ||
       component.type === "script" ||
       component.type === "model" ||
       component.type === "mesh" ||
