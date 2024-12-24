@@ -4,7 +4,12 @@ import { playground } from "@colyseus/playground";
 import { rooms } from "./rooms";
 import { initializeExpress } from "./express";
 
+const publicAddress = `${process.env.FLY_APP_NAME}.fly.dev`;
+
 export default config({
+  options: {
+    publicAddress,
+  },
   initializeGameServer: (gameServer) => {
     /**
      * Define your room handlers:
@@ -26,5 +31,6 @@ export default config({
     /**
      * Before before gameServer.listen() is called.
      */
+    console.log(`Listening on https://${publicAddress}`);
   },
 });
