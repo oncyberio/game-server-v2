@@ -248,6 +248,10 @@ export class ServerSpace {
     //
     const player = this.playerManager.get(data.sessionId);
 
+    if (data.scale && data.scale !== player.avatar.scale) {
+      player.avatar.avatarScale = data.scale;
+    }
+
     if (this.spawn.useUserAvatar && player.avatar) {
       if (data.vrmUrl && data.vrmUrl !== player.avatar.vrmUrl) {
         // console.log(

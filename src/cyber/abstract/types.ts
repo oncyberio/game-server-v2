@@ -14,6 +14,7 @@ export interface PlayerData {
   name: string;
   vrmUrl?: string;
   avatarUrl?: string;
+  scale?: number;
   isAnonymous?: boolean;
   role?: PlayerRole;
   latency: number;
