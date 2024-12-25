@@ -4,7 +4,8 @@ import { playground } from "@colyseus/playground";
 import { rooms } from "./rooms";
 import { initializeExpress } from "./express";
 
-const publicAddress = `${process.env.FLY_APP_NAME}.fly.dev`;
+const flyApp = process.env.FLY_APP_NAME;
+const publicAddress = flyApp ? `${flyApp}.fly.dev` : null;
 
 export default config({
   options: {
@@ -31,6 +32,6 @@ export default config({
     /**
      * Before before gameServer.listen() is called.
      */
-    console.log(`Listening on https://${publicAddress}`);
+    if (flyApp) console.log(`Public address is ${publicAddress}`);
   },
 });

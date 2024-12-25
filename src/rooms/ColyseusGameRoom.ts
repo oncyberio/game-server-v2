@@ -8,6 +8,9 @@ const defaults = {
   MAX_PLAYERS: 200,
 };
 
+const isSingleton = process.env.SINGLE_ROOM === "true";
+const EXIT_TIMEOUT = +process.env.ROOM_EXIT_TIMEOUT || 1000;
+
 //
 export class ColyseusGameRoom extends Room {
   //
@@ -304,6 +307,23 @@ export class ColyseusGameRoom extends Room {
     this._logger.info("Room disposed");
 
     this._roomHandler?._CALLBACKS_.shutdown();
+
+    console.log(
+      "Checking for idle room",
+      this.clients.length,
+      isSingleton,
+      EXIT_TIMEOUT
+    );
+
+    // if no incoming connection in the next 1min, and this is
+    // a single-room server, the exits the process, this will
+    // automatically stop the machine
+    setTimeout(() => {
+      if (this.clients.length === 0 && isSingleton) {
+        this._logger.info("Space is idle, exiting");
+        process.exit(0);
+      }
+    }, EXIT_TIMEOUT);
   }
 }
 

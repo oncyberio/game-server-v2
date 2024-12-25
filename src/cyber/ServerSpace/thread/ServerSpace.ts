@@ -124,8 +124,9 @@ export class ServerSpace {
       this.time = now;
       this.update(dt);
       const dts = Date.now() / 1000 - now;
-      this.maxFrame = Math.max(dts, this.maxFrame);
-      this.avgFrame = dts;
+      //
+      this.maxFrame = Math.round(Math.max(dts, this.maxFrame) * 1000);
+      this.avgFrame = Math.round(dts * 1000);
     }, 1000 / 60);
 
     return {

@@ -18,6 +18,8 @@ const corsOptions = {
   credentials: true,
 };
 
+const isSingleton = process.env.SINGLE_ROOM === "true";
+
 export function initializeExpress(app: any) {
   //
 
@@ -74,38 +76,48 @@ export function initializeExpress(app: any) {
 
   app.post("/join", async (req: Request, res: Response) => {
     try {
+      if (!req.body?.gameId) {
+        //
+        return res.status(400).json({
+          success: false,
+          message: "Invalid request",
+        });
+      }
+
       await mutex.runExclusive(async () => {
         //
-        let { type } = req.query;
-
-        if (!type) type = "cyber-game";
+        let type = "cyber-game";
 
         try {
-          const rooms = await matchMaker.query({
-            name: type as string,
+          let rooms = await matchMaker.query({
+            name: type,
           });
 
-          if (!req.body?.gameId) {
-            //
-            return res.status(400).json({
-              success: false,
-              message: "Invalid request",
-            });
+          if (!isSingleton) {
+            rooms = rooms
+              .filter(
+                (room) =>
+                  !room.private &&
+                  !room.locked &&
+                  room.metadata.gameId === req.body.gameId &&
+                  room.clients < room.maxClients
+              )
+              .sort((a, b) => b.clients - a.clients);
           }
-
-          const [room] = rooms
-            .filter(
-              (room) =>
-                !room.private &&
-                !room.locked &&
-                room.metadata.gameId === req.body.gameId &&
-                room.clients < room.maxClients
-            )
-            .sort((a, b) => b.clients - a.clients);
 
           let reservation = null;
 
-          if (room) {
+          if (rooms.length > 0) {
+            //
+            const room = rooms[0];
+
+            if (isSingleton && room.metadata.gameId !== req.body.gameId) {
+              return res.status(400).json({
+                success: false,
+                message: "Room is already in use",
+              });
+            }
+
             console.log("/join existing", {
               gameId: req.body.gameId,
               userId: req.body.userId,
@@ -128,12 +140,12 @@ export function initializeExpress(app: any) {
 
             const gameData = await GameApi.loadGameData({
               id: req.body.gameId,
-              draft: true,
+              draft: req.body.draft ?? true,
             });
 
             roomOpts.gameData = gameData;
 
-            reservation = await matchMaker.create(type as string, roomOpts, {});
+            reservation = await matchMaker.create(type, roomOpts, {});
           }
 
           res.json({

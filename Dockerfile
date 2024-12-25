@@ -39,7 +39,7 @@ EXPOSE 2567
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:2567/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+    CMD node -e "require('http').get('http://localhost:2567/__healthcheck', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
 # Use non-root user for security
 USER node

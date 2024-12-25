@@ -1,22 +1,25 @@
-# fly.toml app configuration file generated for game-server-v2 on 2024-12-19T17:07:54+01:00
+# fly.toml app configuration file generated for awe-game-server on 2024-12-25T14:30:30+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'game-server-v2'
-primary_region = 'mad'
+app = 'awe-game-server'
+primary_region = 'iad'
 
 [build]
+
+[env]
+  SINGLE_ROOM = 'true'
 
 [http_service]
   internal_port = 2567
   force_https = true
   auto_stop_machines = 'stop'
-  auto_start_machines = true
+  auto_start_machines = false
   min_machines_running = 0
   processes = ['app']
 
 [[vm]]
-  memory = '1gb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
