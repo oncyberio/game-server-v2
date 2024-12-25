@@ -76,13 +76,15 @@ export function initializeExpress(app: any) {
 
   app.post("/join", async (req: Request, res: Response) => {
     try {
-      if (!req.body?.gameId) {
+      if (!req.body?.gameId || !req.body?.userId) {
         //
         return res.status(400).json({
           success: false,
           message: "Invalid request",
         });
       }
+
+      const { gameId, userId, username } = req.body;
 
       await mutex.runExclusive(async () => {
         //
@@ -105,7 +107,7 @@ export function initializeExpress(app: any) {
               .sort((a, b) => b.clients - a.clients);
           }
 
-          let reservation = null;
+          let reservation: matchMaker.SeatReservation = null;
 
           if (rooms.length > 0) {
             //
@@ -118,12 +120,7 @@ export function initializeExpress(app: any) {
               });
             }
 
-            console.log("/join existing", {
-              gameId: req.body.gameId,
-              userId: req.body.userId,
-              username: req.body.username,
-              roomType: type as string,
-            });
+            console.log("/join existing", gameId, userId, username);
 
             reservation = await matchMaker.joinById(room.roomId, req.body, {});
             //
@@ -136,7 +133,7 @@ export function initializeExpress(app: any) {
               gameData: null,
             };
 
-            console.log("/join new", roomOpts);
+            console.log("/join new", gameId, userId, username);
 
             const gameData = await GameApi.loadGameData({
               id: req.body.gameId,
@@ -147,6 +144,12 @@ export function initializeExpress(app: any) {
 
             reservation = await matchMaker.create(type, roomOpts, {});
           }
+
+          console.log(
+            "reservation: ",
+            reservation.room.roomId,
+            reservation.sessionId
+          );
 
           res.json({
             success: true,

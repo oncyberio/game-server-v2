@@ -9,7 +9,7 @@ const defaults = {
 };
 
 const isSingleton = process.env.SINGLE_ROOM === "true";
-const EXIT_TIMEOUT = +process.env.ROOM_EXIT_TIMEOUT || 1000;
+const EXIT_TIMEOUT = +process.env.ROOM_EXIT_TIMEOUT_SEC || 30 * 60 * 1000;
 
 //
 export class ColyseusGameRoom extends Room {
@@ -34,6 +34,8 @@ export class ColyseusGameRoom extends Room {
     // }, this.tickRate);
 
     this._uroomid = Math.random().toString(36).substring(2, 7);
+
+    this.setSeatReservationTime(120);
   }
 
   private _setRoomHandler(handler: any) {

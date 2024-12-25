@@ -1,4 +1,4 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { GlobalWindow } from "happy-dom";
 import { EventEmitter } from "events";
 import type { RoomState } from "../../schema/RoomState";
 import type { PlayerState } from "../../schema/PlayerState";
@@ -76,11 +76,14 @@ export class ServerSpace {
       process.env[secret.key] = secret.value;
     });
 
+    /*
+    this is causing weird issues on fly.io servers
     GlobalRegistrator.register({
       url: "http://localhost:3000",
       width: 1920,
       height: 1080,
     });
+    */
 
     const res = await loadGame(gameData, {
       debugPhysics: opts.debugPhysics ?? true,
@@ -301,7 +304,7 @@ export class ServerSpace {
 
   dispose() {
     //
-    GlobalRegistrator.unregister();
+    // GlobalRegistrator.unregister();
 
     this.stopGame();
 
