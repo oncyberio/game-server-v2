@@ -5,7 +5,11 @@ import { rooms } from "./rooms";
 import { initializeExpress } from "./express";
 
 const flyApp = process.env.FLY_APP_NAME;
-const publicAddress = flyApp ? `${flyApp}.fly.dev` : null;
+const flyMachine = process.env.FLY_MACHINE_ID;
+const flyProxy = process.env.FLY_PROXY;
+
+const publicAddress =
+  flyProxy && flyMachine ? `${flyProxy}/${flyMachine}` : null;
 
 export default config({
   options: {
@@ -32,6 +36,12 @@ export default config({
     /**
      * Before before gameServer.listen() is called.
      */
-    if (flyApp) console.log(`Public address is ${publicAddress}`);
+    console.log("Fly app:", flyApp);
+    console.log("Fly machine:", flyMachine);
+    console.log("Fly proxy:", flyProxy);
+
+    if (publicAddress) {
+      console.log(`Public address is ${publicAddress}`);
+    }
   },
 });

@@ -9,6 +9,7 @@ primary_region = 'iad'
 [build]
 
 [env]
+FLY_PROXY = 'awe-game-router.fly.dev'
 SINGLE_ROOM = 'true'
 ROOM_IDLE_TIMEOUT_SEC = '1800'
 
