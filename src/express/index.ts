@@ -7,6 +7,7 @@ import { monitor } from "@colyseus/monitor";
 import basicAuth from "express-basic-auth";
 import { Mutex } from "async-mutex";
 import { GameApi } from "../cyber/abstract/GameApi";
+import { clearIdleTimeout } from "../timeout";
 
 const mutex = new Mutex();
 
@@ -75,6 +76,9 @@ export function initializeExpress(app: any) {
   });
 
   app.post("/join", async (req: Request, res: Response) => {
+    //
+    clearIdleTimeout();
+
     try {
       if (!req.body?.gameId || !req.body?.userId) {
         //

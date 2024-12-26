@@ -1,6 +1,11 @@
-import { Room, Client, logger, SchemaSerializer } from "@colyseus/core";
+import { Room, Client, logger, RoomException } from "@colyseus/core";
 import { DefaultCyberGame } from "./DefaultCyberGame";
 import { ScriptFactory } from "../cyber/scripting";
+import {
+  clearIdleTimeout,
+  isSingletonRoom,
+  startIdleTimeout,
+} from "../timeout";
 
 const defaults = {
   PATCH_RATE: 1000 / 20,
@@ -8,10 +13,6 @@ const defaults = {
   MAX_PLAYERS: 200,
 };
 
-const isSingleton = process.env.SINGLE_ROOM === "true";
-const EXIT_TIMEOUT = +process.env.ROOM_EXIT_TIMEOUT_SEC || 30 * 60 * 1000;
-
-//
 export class ColyseusGameRoom extends Room {
   //
   private _roomHandler: any;
@@ -298,6 +299,18 @@ export class ColyseusGameRoom extends Room {
     }
   }
 
+  onUncaughtException(error: RoomException<this>, methodName: string): void {
+    //
+    this._logger.error("Uncaught Exception", error.message, methodName);
+
+    if (isSingletonRoom) {
+      //
+      console.error("Room is singleton, closing");
+
+      process.exit(1);
+    }
+  }
+
   private _disposed = false;
 
   onDispose(): void | Promise<any> {
@@ -308,24 +321,9 @@ export class ColyseusGameRoom extends Room {
 
     this._logger.info("Room disposed");
 
+    startIdleTimeout();
+
     this._roomHandler?._CALLBACKS_.shutdown();
-
-    console.log(
-      "Checking for idle room",
-      this.clients.length,
-      isSingleton,
-      EXIT_TIMEOUT
-    );
-
-    // if no incoming connection in the next 1min, and this is
-    // a single-room server, the exits the process, this will
-    // automatically stop the machine
-    setTimeout(() => {
-      if (this.clients.length === 0 && isSingleton) {
-        this._logger.info("Space is idle, exiting");
-        process.exit(0);
-      }
-    }, EXIT_TIMEOUT);
   }
 }
 
